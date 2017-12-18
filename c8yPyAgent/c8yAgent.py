@@ -12,6 +12,11 @@ import paho.mqtt.client as mqtt
 class C8yAgent(object):
     '''
     Cumulocity Python Agent
+    Usage Example:
+    Create a new Agent Object by providing
+    c8y = C8yAgent("mqtt.iot.softwareag.com", 1883)
+    if c8y.initialized == False:
+      c8y.registerDevice("testdevice", "Marcos Test device", "c8y_TestDevice", "serialNumberTest", "Meine Hardware Nummer", "reversion 1234","c8y_Restart,c8y_Message")
     '''
     def __init__(self,mqtthost,mqttport):
         '''
@@ -54,6 +59,14 @@ class C8yAgent(object):
         print("Log: " +string)
     
     def connect(self,on_message,topics):
+        
+        ''' Will connect to the mqtt broker
+            
+            Keyword Arguments:
+            on_message -- has to be a method that will be called for new messages distributed to a subscribed topic
+            topics -- a list of topics strings like s/ds to subscribe to
+        
+        ''' 
         if self.initialized == False:
             print('Not initialized, please call registerDevice() of edit c8y.properties file')
             return
@@ -76,6 +89,20 @@ class C8yAgent(object):
 
     def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString):
         
+        '''
+        Will register a new device to the c8y platform.
+        Please create a device registration on the platfomrm bevorhand
+        
+        Keyword Arguments:
+        clientId -- external Id of the device
+        deviceName -- Device Name (displayed in the UI)
+        deviceType -- Device Type
+        serialNumber -- Serial of the device
+        hardwareModel -- Hardware Model of the device
+        reversion -- Hardware Reversion of the device
+        operationString -- Comma seperated string which operations the device supports e.g 'c8y_Message,c8y_Restart
+        
+        '''
         self.clientId = clientId
         self.deviceName = deviceName
         self.deviceType = deviceType

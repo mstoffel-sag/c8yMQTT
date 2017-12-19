@@ -89,7 +89,6 @@ def listenForJoystick():
       print 'Exiting...'
       sys.exit()  
                          
-
 if c8y.initialized == False:
     c8y.registerDevice(getserial(), 
                        "PI_" + getserial(), 
@@ -103,8 +102,5 @@ if c8y.initialized == False:
     exit()
    
 c8y.connect(on_message,["s/ds","s/dc/pi","s/e"])
-
-start_new_thread(sendMeasurements())
-start_new_thread(listenForJoystick())
 
 

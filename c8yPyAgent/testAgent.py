@@ -2,7 +2,10 @@
 Created on 05.12.2017
 
 @author: mstoffel
+
+Example implementation of the c8yAgent class. Can be adjusted to any device.
 '''
+
 
 from thread import start_new_thread
 import random
@@ -10,12 +13,11 @@ import sys
 import time
 
 from c8yAgent import C8yAgent
+import logging
 
 
 def on_message(client, obj, msg):
     print("Message Received: " +msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
-    
-
 
 def sendMeasurements():
     try:
@@ -28,15 +30,20 @@ def sendMeasurements():
         sys.exit()
         
 
-c8y = C8yAgent("mqtt.iot.softwareag.com", 1883)
+c8y = C8yAgent("mqtt.iot.softwareag.com", 1883,loglevel=logging.DEBUG)
 
 if c8y.initialized == False:
-    print 'Not initialized. Try to register'
-    c8y.registerDevice("marcodevice", "Marcos Test device", "c8y_TestDevice", "serialNumberTest", "Meine Hardware Nummer", "reversion 1234","c8y_Restart,c8y_Message")
+    c8y.registerDevice("marcodevice", 
+                       "Marcos Test device", 
+                       "c8y_TestDevice", 
+                       "serialNumberTest", 
+                       "Meine Hardware Nummer", 
+                       "reversion 1234",
+                       "c8y_Restart,c8y_Message")
 
 if c8y.initialized == False:
-    print 'could not register device.'
-    exit
+    exit()
    
 c8y.connect(on_message,["s/ds","s/dc/pi","s/e"])
+
 start_new_thread(sendMeasurements())

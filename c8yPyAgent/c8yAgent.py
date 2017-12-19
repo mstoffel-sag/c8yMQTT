@@ -4,7 +4,10 @@ Created on 05.12.2017
 @author: mstoffel
 '''
 from ConfigParser import SafeConfigParser
+import logging
+from logging.handlers import RotatingFileHandler
 import os, time, threading, ssl
+import sys
 
 import paho.mqtt.client as mqtt
 
@@ -16,14 +19,22 @@ class C8yAgent(object):
     Create a new Agent Object by providing
     c8y = C8yAgent("mqtt.iot.softwareag.com", 1883)
     if c8y.initialized == False:
-      c8y.registerDevice("testdevice", "Marcos Test device", "c8y_TestDevice", "serialNumberTest", "Meine Hardware Nummer", "reversion 1234","c8y_Restart,c8y_Message")
+      c8y.registerDevice("testdevice", "Test device", "c8y_TestDevice", "serialNumberTest", "Meine Hardware Nummer", "reversion 1234","c8y_Restart,c8y_Message")
     '''
-    def __init__(self,mqtthost,mqttport):
+    
+    
+    def __init__(self,mqtthost,mqttport, loglevel=logging.INFO):
         '''
         Read Configuration file
         Connect to configured tenant
         do device onboarding if not already registered
         '''
+        self.logger = logging.getLogger('C8yAgent')
+        self.logger.setLevel(loglevel)
+        self.logHandler = RotatingFileHandler('c8yAgent.log', maxBytes=2*1024*1024,backupCount=5)
+        self.logger.addHandler(self.logHandler)
+        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        
         self.config = SafeConfigParser()
         self.configFile = 'c8y.properties'
         self.mqtthost = mqtthost
@@ -31,7 +42,7 @@ class C8yAgent(object):
         
         if not os.path.exists(self.configFile):
             self.initialized = False
-            print('Config file does not exist, please call registerDevice() of edit Config: '+ self.configFile)
+            self.logger.error('Config file does not exist, please call registerDevice() of edit Config: '+ self.configFile)
             return 
 
 
@@ -42,21 +53,23 @@ class C8yAgent(object):
         self.password= self.config.get('credentials', 'password')
         
         if self.password == '' or self.user == '' or self.tenant == '' or self.clientId == '':
+            self.logger.error('Coould not  initialize Agent. Missing Values in c8y.properties')
             self.initialized = False
         else:
+            self.logger.info('Successfully initialized.')
             self.initialized = True
             
     def on_connect(self,client, userdata, flags, rc):
-        print("rc: " + str(rc))
+        self.logger.debug("connect: " + str(rc))
 
     def on_publish(self,client, obj, mid):
-        print("mid: " + str(mid))
+        self.logger.debug("publish: " + str(mid))
 
     def on_subscribe(self,client, obj, mid, granted_qos):
-        print("Subscribed: " + str(mid) + " " + str(granted_qos))
+        self.logger.debug("Subscribed: " + str(mid) + " " + str(granted_qos))
 
     def on_log(self,client, obj, level, string):
-        print("Log: " +string)
+        self.logger.debug("Log: " +string)
     
     def connect(self,on_message,topics):
         
@@ -68,7 +81,7 @@ class C8yAgent(object):
         
         ''' 
         if self.initialized == False:
-            print('Not initialized, please call registerDevice() of edit c8y.properties file')
+            self.logger.error('Not initialized, please call registerDevice() of edit c8y.properties file')
             return
         self.client = mqtt.Client(client_id=self.clientId)
         self.client.username_pw_set(self.tenant+'/'+ self.user, self.password)
@@ -78,12 +91,12 @@ class C8yAgent(object):
         self.client.on_subscribe = self.on_subscribe
         self.client.on_log = self.on_log
         self.client.connect(self.mqtthost, self.mqttport)
-#        self.client.loop_forever(1)
         self.client.loop_start()
         self.client.subscribe('s/ds', 2)
         
         for t in topics:
             self.client.subscribe(t, 2)
+            self.logger.debug('Subscribing to topic: ' + t)
 
 #        self.client.publish("s/us", "100,My Python Client,c8y_TestDevice",2)
 
@@ -137,16 +150,16 @@ class C8yAgent(object):
             print 'Could not register device. Exiting'
             exit
             
-        print 'Reconnection with received creds...'
+        self.logger.debug( 'Reconnection with received creds')
         self.client.username_pw_set(self.tenant+'/'+self.user,self.password)
         self.client.connect(self.mqtthost, self.mqttport)
         self.client.loop_start()
-        print 'Publishing Device Meta Data...'
+        self.logger.debug( 'Publishing Device Meta Data...')
         self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2)
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
         self.client.publish("s/us", "114,"+ operationString,2)
         
-        print 'Stop Loop'
+        self.logger.debug( 'Stop Loop')
         self.client.loop_stop(True)
         self.client.disconnect()
 
@@ -157,9 +170,9 @@ class C8yAgent(object):
 
           
     def __on_messageRegistration(self,client,userdata,message):
-        print("Received Registration Message: " + message.payload)
+        self.logger.debug("Received Registration Message: " + message.payload)
         if (message.payload.startswith("70")):
-            print("Got Device Credentials")
+            self.logger.info("Got Device Credentials")
             messageArray = message.payload.split(',')
             self.tenant = list(messageArray)[1]
             self.user = list(messageArray)[2]
@@ -170,7 +183,7 @@ class C8yAgent(object):
             self.config.set('credentials', 'password', self.password)
             self.config.set('credentials', 'clientid', self.clientId)
             self.config.write(open(self.configFile, 'w'))
-            print('Config file written:')
+            self.logger.debug('Config file written:')
             self.initialized = True
             
     def __getPassword(self,text,maxcount):
@@ -182,7 +195,9 @@ class C8yAgent(object):
                 if count==maxcount:
                     break
             pos += 1
-        return(text[pos+1:])
+        pwd = text[pos+1:]
+        self.logger.debug('got password: ' + pwd)
+        return(pwd)
 
 
         

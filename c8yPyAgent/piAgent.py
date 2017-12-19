@@ -72,26 +72,21 @@ def on_message(client, obj, msg):
 def sendMeasurements(stopEvent,interval):
     try:
         while not stopEvent.wait(interval):
+            listenForJoystick()
             sendTemperature()  
             sendAcceleration()
             sendHumidity()
             sendPressure()
             sendGyroscope()
-            time.sleep(5)
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
         print 'Exiting...'
         sys.exit()
         
-def listenForJoystick(stopEvent,interval):
-    try:
-         while not stopEvent.wait(interval):
-            for event in sense.stick.get_events():
-                print("The joystick was {} {}".format(event.action, event.direction))
-                c8y.publish("s/us","400,c8y_Joystick,{} {}".format(event.action, event.direction))
-    except (KeyboardInterrupt, SystemExit):
-      print 'Exiting...'
-      sys.exit()
+def listenForJoystick():
+    for event in sense.stick.get_events():
+      print("The joystick was {} {}".format(event.action, event.direction))
+      c8y.publish("s/us","400,c8y_Joystick,{} {}".format(event.action, event.direction))
       
             
 if c8y.initialized == False:
@@ -108,8 +103,7 @@ if c8y.initialized == False:
    
 c8y.connect(on_message,["s/ds","s/dc/pi","s/e"])
 
-tSendMeasurements = Thread(target = sendMeasurements, args=(stopEvent,4)).start()
-tlistenForJoystick = Thread(target = listenForJoystick, args=(stopEvent,4)).start()
-
-
+Thread(target = sendMeasurements, args=(stopEvent,2)).start()
+time.sleep(10)
+stopEvent.set()
 

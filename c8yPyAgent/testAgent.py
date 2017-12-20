@@ -58,7 +58,10 @@ if c8y.initialized == False:
    
 c8y.connect(on_message,["s/ds","s/dc/pi","s/e"])
 
-Thread(target = sendMeasurements, args=(stopEvent,4)).start()
-Thread(target = testThead, args=(stopEvent,2)).start()
+t = Thread(target = sendMeasurements, args=(stopEvent,4))
+t.daemon = True
+t.start()
+
+
 time.sleep(10)
 stopEvent.set()

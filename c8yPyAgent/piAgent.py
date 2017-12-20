@@ -20,6 +20,9 @@ stopEvent = threading.Event()
 sense = SenseHat()
 c8y = C8yAgent("mqtt.iot.softwareag.com", 1883, loglevel=logging.DEBUG)
 
+reset = 0
+resetMax = 3
+
 
 def sendTemperature():
     tempString = "211," + str(sense.get_temperature())
@@ -97,23 +100,38 @@ def listenForJoystick():
     for event in sense.stick.get_events():
         c8y.logger.debug("The joystick was {} {}".format(event.action, event.direction))
         c8y.publish("s/us", "400,c8y_Joystick,{} {}".format(event.action, event.direction))
+        if event.action == 'pressed' and event.direction == 'middle':
+            global reset
+            global resetMax
+            reset += 1
+            if reset >= resetMax:
+                stopEvent.set()
+                c8y.logger.info('Resetting....')
+                c8y.reset()
+                runAgent()
 
 
-# Enter Device specific values            
-if c8y.initialized == False:
-    c8y.registerDevice(getserial(),
-                       "PI_" + getserial(),
-                       "c8y_PI",
-                       getserial(),
-                       "PI3",
-                       "a02082",
-                       "c8y_Restart,c8y_Message")
+def runAgent():
+    # Enter Device specific values
+    if c8y.initialized == False:
+        c8y.registerDevice(getserial(),
+                           "PI_" + getserial(),
+                           "c8y_PI",
+                           getserial(),
+                           "PI3",
+                           "a02082",
+                           "c8y_Restart,c8y_Message")
+    if c8y.initialized == False:
+        exit()
+    c8y.connect(on_message, ["s/ds", "s/dc/pi", "s/e"])
+    sendThread = Thread(target=sendMeasurements, args=(stopEvent, 2))
+    sendThread.daemon = True
+    sendThread.start()
 
-if c8y.initialized == False:
-    exit()
+runAgent()
 
-c8y.connect(on_message, ["s/ds", "s/dc/pi", "s/e"])
 
-Thread(target=sendMeasurements, args=(stopEvent, 2)).start()
+
+
 # time.sleep(10)
 # stopEvent.set()

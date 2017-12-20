@@ -166,7 +166,10 @@ class C8yAgent(object):
     def publish(self,topic,payload):
         self.client.publish(topic,payload,2)
         
-
+    def reset(self):
+        self.client.loop_stop(force=True)
+        self.client.disconnect()
+        os.remove(self.configFile)
           
     def __on_messageRegistration(self,client,userdata,message):
         self.logger.debug("Received Registration Message: " + message.payload)

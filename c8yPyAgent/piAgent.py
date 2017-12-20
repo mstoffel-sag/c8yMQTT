@@ -18,7 +18,8 @@ from c8yAgent import C8yAgent
 
 stopEvent = threading.Event()
 sense = SenseHat()
-c8y = C8yAgent("mqtt.iot.softwareag.com", 1883, loglevel=logging.DEBUG)
+#c8y = C8yAgent("mqtt.iot.softwareag.com", 1883, loglevel=logging.DEBUG)
+c8y = C8yAgent("mqtt.cumulocity.com", 1883, loglevel=logging.DEBUG)
 
 reset = 0
 resetMax = 3
@@ -78,7 +79,8 @@ def getserial():
 
 
 def on_message(client, obj, msg):
-    print("Message Received: " + msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
+    message = msg.payload.decode('utf-8')
+    print("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
 
 
 def sendMeasurements(stopEvent, interval):
@@ -125,11 +127,11 @@ def runAgent():
     if c8y.initialized == False:
         exit()
     c8y.connect(on_message, ["s/ds", "s/dc/pi", "s/e"])
-    sendThread = Thread(target=sendMeasurements, args=(stopEvent, 2))
+    sendThread = Thread(target=sendMeasurements, args=(stopEvent, 5))
     sendThread.start()
 
 runAgent()
-
+#time.sleep(100)
 
 
 

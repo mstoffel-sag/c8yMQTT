@@ -3,7 +3,7 @@ Created on 05.12.2017
 
 @author: mstoffel
 '''
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 import logging
 from logging.handlers import RotatingFileHandler
 import os, time, threading, ssl
@@ -35,7 +35,7 @@ class C8yAgent(object):
         self.logger.addHandler(self.logHandler)
         self.logger.addHandler(logging.StreamHandler(sys.stdout))
         
-        self.config = SafeConfigParser()
+        self.config = ConfigParser()
         self.configFile = 'c8y.properties'
         self.mqtthost = mqtthost
         self.mqttport = mqttport

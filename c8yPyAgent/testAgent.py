@@ -6,16 +6,14 @@ Created on 05.12.2017
 Example implementation of the c8yAgent class. Can be adjusted to any device.
 '''
 
-import threading
-from threading import Thread
+import logging
 import random
 import sys
+from threading import Thread
+import threading
 import time
 
 from c8yAgent import C8yAgent
-import logging
-
-
 
 
 stopEvent = threading.Event()
@@ -31,17 +29,17 @@ def sendMeasurements(stopEvent,interval):
             c8y.publish("s/us", "211,"+ str(temp))
 
     except (KeyboardInterrupt, SystemExit):
-        print 'Exinting...'
+        print ('Exinting...')
         sys.exit()
         
 def testThead(stopEvent,interval):
     try:
         while not stopEvent.wait(interval):
-                print 'waiting 20'
+                print ('waiting 20')
                 time.sleep(20)  
-        print 'Stopped...'
+        print ('Stopped...')
     except (KeyboardInterrupt, SystemExit):
-        print 'Exinting...'
+        print ('Exinting...')
         sys.exit()      
 
 c8y = C8yAgent("mqtt.iot.softwareag.com", 1883,loglevel=logging.DEBUG)

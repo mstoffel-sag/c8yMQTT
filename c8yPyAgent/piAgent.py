@@ -1,3 +1,4 @@
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 '''
 Created on 19.12.2017
 
@@ -80,15 +81,15 @@ def sendMeasurements(stopEvent,interval):
             sendGyroscope()
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
-        print 'Exiting...'
+        c8y.logger.info( 'Exiting...')
         sys.exit()
         
 def listenForJoystick():
     for event in sense.stick.get_events():
-      print("The joystick was {} {}".format(event.action, event.direction))
+      c8y.logger.debug("The joystick was {} {}".format(event.action, event.direction))
       c8y.publish("s/us","400,c8y_Joystick,{} {}".format(event.action, event.direction))
       
-            
+# Enter Device specific values            
 if c8y.initialized == False:
     c8y.registerDevice(getserial(), 
                        "PI_" + getserial(), 
@@ -104,6 +105,6 @@ if c8y.initialized == False:
 c8y.connect(on_message,["s/ds","s/dc/pi","s/e"])
 
 Thread(target = sendMeasurements, args=(stopEvent,2)).start()
-time.sleep(10)
-stopEvent.set()
+#time.sleep(10)
+#stopEvent.set()
 

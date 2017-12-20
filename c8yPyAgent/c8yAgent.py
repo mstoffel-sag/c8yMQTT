@@ -3,7 +3,7 @@ Created on 05.12.2017
 
 @author: mstoffel
 '''
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 import logging
 from logging.handlers import RotatingFileHandler
 import os, time, threading, ssl
@@ -142,12 +142,11 @@ class C8yAgent(object):
             else:
                 self.initialized = True
                 break
-        print 'after initialize loop'
         self.client.loop_stop(True)
         self.client.disconnect()
             
         if self.initialized == False:
-            print 'Could not register device. Exiting'
+            self.logger.error( 'Could not register device. Exiting')
             exit
             
         self.logger.debug( 'Reconnection with received creds')

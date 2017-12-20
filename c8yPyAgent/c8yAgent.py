@@ -135,7 +135,7 @@ class C8yAgent(object):
         self.client.subscribe("s/dcr")
         self.client.subscribe("s/e")
         
-        for x in range(0,5):
+        for x in range(0,10):
             if self.initialized == False:
                 self.client.publish("s/ucr", "", 2)
                 time.sleep(5)
@@ -167,18 +167,23 @@ class C8yAgent(object):
         self.client.publish(topic,payload,2)
         
     def reset(self):
-        self.client.loop_stop(force=True)
+        self.logger.info('reseting')
+        self.client.loop_stop()
+        self.logger.debug('loop stopped')
         self.client.disconnect()
+        self.logger.debug('client disconnected')
         os.remove(self.configFile)
+        self.logger.debug('config file removed')
           
     def __on_messageRegistration(self,client,userdata,message):
-        self.logger.debug("Received Registration Message: " + message.payload)
-        if (message.payload.startswith("70")):
+        message = message.payload.decode('utf-8')
+        self.logger.debug("Received Registration Message: " + message)
+        if (message.startswith("70")):
             self.logger.info("Got Device Credentials")
-            messageArray = message.payload.split(',')
+            messageArray = message.split(',')
             self.tenant = list(messageArray)[1]
             self.user = list(messageArray)[2]
-            self.password = self.__getPassword(message.payload,3)
+            self.password = self.__getPassword(message,3)
             self.config.add_section('credentials')
             self.config.set('credentials', 'user', self.user)
             self.config.set('credentials', 'tenant', self.tenant)

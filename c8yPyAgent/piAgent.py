@@ -113,6 +113,7 @@ def listenForJoystick():
 
 def runAgent():
     # Enter Device specific values
+    stopEvent.clear()
     if c8y.initialized == False:
         c8y.registerDevice(getserial(),
                            "PI_" + getserial(),
@@ -125,7 +126,6 @@ def runAgent():
         exit()
     c8y.connect(on_message, ["s/ds", "s/dc/pi", "s/e"])
     sendThread = Thread(target=sendMeasurements, args=(stopEvent, 2))
-    sendThread.daemon = True
     sendThread.start()
 
 runAgent()

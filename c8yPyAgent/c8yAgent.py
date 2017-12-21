@@ -31,7 +31,7 @@ class C8yAgent(object):
         '''
         self.logger = logging.getLogger('C8yAgent')
         self.logger.setLevel(loglevel)
-        self.logHandler = RotatingFileHandler('c8yAgent.log', maxBytes=2*1024*1024,backupCount=5)
+        self.logHandler = RotatingFileHandler('c8yAgent.log', maxBytes=1*1024*1024,backupCount=5)
         self.logger.addHandler(self.logHandler)
         self.logger.addHandler(logging.StreamHandler(sys.stdout))
         

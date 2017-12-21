@@ -5,25 +5,30 @@ Created on 19.12.2017
 @author: mstoffel
 '''
 
+from configparser import RawConfigParser
 import logging
-import signal
 import sys
 from threading import Thread
 import threading
-import time
+
 
 from sense_hat import SenseHat
 
 from c8yAgent import C8yAgent
 
+
 stopEvent = threading.Event()
 sense = SenseHat()
-#c8y = C8yAgent("mqtt.iot.softwareag.com", 1883, loglevel=logging.DEBUG)
-c8y = C8yAgent("mqtt.cumulocity.com", 1883, loglevel=logging.DEBUG)
 
+config = RawConfigParser()
+config.read('pi.properties')
+loglevel = logging.getLevelName(config.get('device', 'INFO'))
+host = config.get('host','mqtt.cumulocity.com')
+port = config.get('port','1883')
 reset = 0
 resetMax = 3
 
+c8y = C8yAgent(host, port, loglevel=loglevel)
 
 def sendTemperature():
     tempString = "211," + str(sense.get_temperature())
@@ -77,10 +82,39 @@ def getserial():
     c8y.logger.debug('Found Serial: ' + cpuserial)
     return cpuserial
 
+def getrevision():
+    # Extract board revision from cpuinfo file
+    myrevision = "0000"
+    try:
+        f = open('/proc/cpuinfo','r')
+        for line in f:
+            if line[0:8]=='Revision':
+                length=len(line)
+                myrevision = line[11:length-1]
+        f.close()
+    except:
+        myrevision = "ERROR0000"
+    c8y.logger.debug('Found HW Version: ' + myrevision)
+    return myrevision
+
+def gethardware():
+    # Extract board revision from cpuinfo file
+    myrevision = "0000"
+    try:
+        f = open('/proc/cpuinfo','r')
+        for line in f:
+            if line[0:8]=='Hardware':
+                length=len(line)
+                myrevision = line[11:length-1]
+        f.close()
+    except:
+        myrevision = "ERROR0000"
+    c8y.logger.debug('Found Hardware: ' + myrevision)
+    return myrevision
 
 def on_message(client, obj, msg):
     message = msg.payload.decode('utf-8')
-    print("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
+    c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
 
 
 def sendMeasurements(stopEvent, interval):
@@ -94,7 +128,7 @@ def sendMeasurements(stopEvent, interval):
             sendGyroscope()
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
-        c8y.logger.info('Exiting...')
+        c8y.logger.info('Exiting sendMeasurement...')
         sys.exit()
 
 
@@ -108,29 +142,30 @@ def listenForJoystick():
             reset += 1
             if reset >= resetMax:
                 stopEvent.set()
-                c8y.logger.info('Resetting....')
+                c8y.logger.info('Resetting c8y.properties initializing re-register device....')
                 c8y.reset()
-                runAgent()
+                runAgent(config)
 
 
-def runAgent():
+def runAgent(configuration):
     # Enter Device specific values
     stopEvent.clear()
     if c8y.initialized == False:
-        c8y.registerDevice(getserial(),
-                           "PI_" + getserial(),
-                           "c8y_PI",
-                           getserial(),
-                           "PI3",
-                           "a02082",
-                           "c8y_Restart,c8y_Message")
+        serial = getserial()
+        c8y.registerDevice(serial,
+                           "PI_" + serial,
+                           configuration.get('device', 'devicetype'),
+                           serial,
+                           gethardware(),
+                           getrevision(),
+                           configuration.get('device', 'operations'))
     if c8y.initialized == False:
         exit()
-    c8y.connect(on_message, ["s/ds", "s/dc/pi", "s/e"])
+    c8y.connect(on_message, list(configuration.get('device', 'subscribe')))
     sendThread = Thread(target=sendMeasurements, args=(stopEvent, 5))
     sendThread.start()
 
-runAgent()
+runAgent(config)
 #time.sleep(100)
 
 

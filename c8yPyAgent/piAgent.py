@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 '''
 Created on 19.12.2017
@@ -8,6 +9,7 @@ Created on 19.12.2017
 from configparser import RawConfigParser
 import logging
 import sys
+import os
 from threading import Thread
 import threading
 import shlex
@@ -23,10 +25,12 @@ config.read('pi.properties')
 loglevel = logging.getLevelName(config.get('device', 'loglevel'))
 host = config.get('device','host')
 port = int(config.get('device','port'))
+tls = config.getboolean('device','tls')
+cacert = config.get('device','cacert')
 reset = 0
 resetMax = 3
 
-c8y = C8yAgent(host, port, loglevel=loglevel)
+c8y = C8yAgent(host, port,tls,cacert, loglevel=loglevel)
 
 def sendTemperature():
     tempString = "211," + str(sense.get_temperature())
@@ -70,10 +74,9 @@ def sendConfiguration(configuration):
     configString = ''
     for key, value in device.items():
         configString +=key + '=' + value + '\n'
-    configString = '113,' + configString
+    configString = '113,"' + configString + '"'
     c8y.logger.debug('Sending Config String:' + configString)
-    configBytes = bytearray(configString,'utf8')
-    c8y.publish("s/us",configBytes)
+    c8y.publish("s/us",configString)
 
 def getserial():
     # Extract serial from cpuinfo file
@@ -128,6 +131,10 @@ def on_message(client, obj, msg):
         messageArray.whitespace_split =True 
         sense.show_message(list(messageArray)[-1])
         sense.clear
+    if message.startswith('510'):
+        c8y.logger.info('Rebooting')
+        os.system('sudo reboot')
+
 
 
 def sendMeasurements(stopEvent, interval):
@@ -179,6 +186,7 @@ def runAgent(configuration):
         exit()
     subscribe = configuration.get('device', 'subscribe').split(',')
     c8y.connect(on_message, subscribe)
+    c8y.publish("s/us", "114,"+ configuration.get('device', 'operations'))
     sendConfiguration(configuration)
     sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(configuration.get('device','sendinterval'))))
     sendThread.start()

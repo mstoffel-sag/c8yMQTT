@@ -23,7 +23,7 @@ class C8yAgent(object):
     '''
     
     
-    def __init__(self,mqtthost,mqttport, loglevel=logging.INFO):
+    def __init__(self,mqtthost,mqttport, tls , cacert,loglevel=logging.INFO):
         '''
         Read Configuration file
         Connect to configured tenant
@@ -39,6 +39,8 @@ class C8yAgent(object):
         self.configFile = 'c8y.properties'
         self.mqtthost = mqtthost
         self.mqttport = mqttport
+        self.cacert = cacert
+        self.tls = tls
         
         if not os.path.exists(self.configFile):
             self.initialized = False
@@ -84,6 +86,8 @@ class C8yAgent(object):
             self.logger.error('Not initialized, please call registerDevice() of edit c8y.properties file')
             return
         self.client = mqtt.Client(client_id=self.clientId)
+        if self.tls:
+            self.client.tls_set(self.cacert) 
         self.client.username_pw_set(self.tenant+'/'+ self.user, self.password)
         self.client.on_message = on_message
         self.client.on_publish = self.on_publish
@@ -97,6 +101,7 @@ class C8yAgent(object):
         for t in topics:
             self.client.subscribe(t, 2)
             self.logger.debug('Subscribing to topic: ' + t)
+
 
 
     def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):
@@ -131,6 +136,8 @@ class C8yAgent(object):
         self.client.on_connect = self.on_connect
         self.client.on_subscribe = self.on_subscribe
         self.client.on_log = self.on_log
+        if self.tls:
+            self.client.tls_set(self.cacert)
         self.client.connect(self.mqtthost, self.mqttport)
         self.client.loop_start()
         self.client.subscribe("s/dcr")
@@ -154,12 +161,10 @@ class C8yAgent(object):
         self.client.username_pw_set(self.tenant+'/'+self.user,self.password)
         self.client.connect(self.mqtthost, self.mqttport)
         self.client.loop_start()
-        self.logger.debug( 'Publishing Device Meta Data...')
         self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2)
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
-        self.client.publish("s/us", "114,"+ self.operationString,2)
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
-        
+        self.client.publish("s/us", "114,"+ self.operationString,2)
         self.logger.debug( 'Stop Loop')
         self.client.loop_stop(True)
         self.client.disconnect()

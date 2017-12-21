@@ -1,0 +1,195 @@
+{
+  "name": "pi",
+  "type": "c8y_SmartRest2Template",
+  "com_cumulocity_model_smartrest_csv_CsvSmartRestTemplate": {
+    "requestTemplates": [
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "c8y_Acceleration.accelerationX.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "c8y_Acceleration.accelerationY.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "c8y_Acceleration.accelerationZ.value",
+            "type": "NUMBER",
+            "value": null
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "c8y_Acceleration"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "991",
+        "response": false,
+        "name": "AccelerationMeasurement"
+      },
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "c8y_HumidityMeasurement.h.value",
+            "type": "NUMBER",
+            "value": null
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "c8y_HumidityMeasurement"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "992",
+        "response": false,
+        "name": "HumidityMeasurement"
+      },
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "c8y_GyroscopeMeasurement.pitch.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "c8y_GyroscopeMeasurement.roll.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "c8y_GyroscopeMeasurement.yaw.value",
+            "type": "NUMBER",
+            "value": null
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "c8y_GyroscopeMeasurement"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "993",
+        "response": false,
+        "name": "GyroscopeMeasurement"
+      },
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "c8y_Pressure.hpa.value",
+            "type": "NUMBER",
+            "value": null
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "c8y_PressureMeasurement"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "994",
+        "response": false,
+        "name": "PressureMeasurement"
+      },
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "temperatur.temp_avg.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "temperatur.temp_mockup.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "temperatur.temp_mockup_unit.unit",
+            "type": "STRING",
+            "value": "°C"
+          },
+          {
+            "path": "temperatur.temp_avg_unit.unit",
+            "type": "STRING",
+            "value": "°C"
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "temperatur"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "999",
+        "response": false,
+        "name": "BueroTemperatur"
+      }
+    ],
+    "responseTemplates": [
+      {
+        "base": "c8y_Message",
+        "condition": "c8y_Message",
+        "msgId": "1001",
+        "name": "Message",
+        "pattern": [
+          "text"
+        ]
+      }
+    ]
+  },
+  "__externalId": "pi"
+}

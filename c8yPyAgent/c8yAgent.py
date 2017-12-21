@@ -98,9 +98,8 @@ class C8yAgent(object):
             self.client.subscribe(t, 2)
             self.logger.debug('Subscribing to topic: ' + t)
 
-#        self.client.publish("s/us", "100,My Python Client,c8y_TestDevice",2)
 
-    def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString):
+    def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):
         
         '''
         Will register a new device to the c8y platform.
@@ -114,7 +113,7 @@ class C8yAgent(object):
         hardwareModel -- Hardware Model of the device
         reversion -- Hardware Reversion of the device
         operationString -- Comma seperated string which operations the device supports e.g 'c8y_Message,c8y_Restart
-        
+        requiredInterval -- indicates in which interval the device must talk to the platform        
         '''
         self.clientId = clientId
         self.deviceName = deviceName
@@ -122,6 +121,8 @@ class C8yAgent(object):
         self.serialNumber = serialNumber
         self.hardwareModel = hardwareModel
         self.reversion = reversion
+        self.requiredInterval = requiredInterval
+        self.operationString = operationString
         
         self.client = mqtt.Client(client_id=self.clientId)
         self.client.username_pw_set('management/devicebootstrap', 'Fhdt1bb1f')
@@ -156,7 +157,8 @@ class C8yAgent(object):
         self.logger.debug( 'Publishing Device Meta Data...')
         self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2)
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
-        self.client.publish("s/us", "114,"+ operationString,2)
+        self.client.publish("s/us", "114,"+ self.operationString,2)
+        self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         
         self.logger.debug( 'Stop Loop')
         self.client.loop_stop(True)
@@ -167,13 +169,17 @@ class C8yAgent(object):
         self.client.publish(topic,payload,2)
         
     def reset(self):
+        self.initialized = False
         self.logger.info('reseting')
         self.client.loop_stop()
         self.logger.debug('loop stopped')
         self.client.disconnect()
         self.logger.debug('client disconnected')
-        os.remove(self.configFile)
-        self.logger.debug('config file removed')
+        if os.path.isfile(self.configFile):
+            os.remove(self.configFile)
+            self.logger.debug('config file removed')
+        else:
+            self.logger.debug('config file already missing')
           
     def __on_messageRegistration(self,client,userdata,message):
         message = message.payload.decode('utf-8')
@@ -184,6 +190,7 @@ class C8yAgent(object):
             self.tenant = list(messageArray)[1]
             self.user = list(messageArray)[2]
             self.password = self.__getPassword(message,3)
+            self.config = RawConfigParser()
             self.config.add_section('credentials')
             self.config.set('credentials', 'user', self.user)
             self.config.set('credentials', 'tenant', self.tenant)

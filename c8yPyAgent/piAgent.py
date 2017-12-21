@@ -10,10 +10,8 @@ import logging
 import sys
 from threading import Thread
 import threading
-
-
+import shlex
 from sense_hat import SenseHat
-
 from c8yAgent import C8yAgent
 
 
@@ -22,9 +20,9 @@ sense = SenseHat()
 
 config = RawConfigParser()
 config.read('pi.properties')
-loglevel = logging.getLevelName(config.get('device', 'INFO'))
-host = config.get('host','mqtt.cumulocity.com')
-port = config.get('port','1883')
+loglevel = logging.getLevelName(config.get('device', 'loglevel'))
+host = config.get('device','host')
+port = int(config.get('device','port'))
 reset = 0
 resetMax = 3
 
@@ -67,6 +65,15 @@ def sendGyroscope():
     c8y.logger.debug("Sending Gyroscope measurement: " + gyString)
     c8y.publish("s/uc/pi", gyString)
 
+def sendConfiguration(configuration):
+    device = configuration['device']
+    configString = ''
+    for key, value in device.items():
+        configString +=key + '=' + value + '\n'
+    configString = '113,' + configString
+    c8y.logger.debug('Sending Config String:' + configString)
+    configBytes = bytearray(configString,'utf8')
+    c8y.publish("s/us",configBytes)
 
 def getserial():
     # Extract serial from cpuinfo file
@@ -115,6 +122,12 @@ def gethardware():
 def on_message(client, obj, msg):
     message = msg.payload.decode('utf-8')
     c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
+    if message.startswith('1001'):
+        messageArray =  shlex.shlex(message, posix=True)
+        messageArray.whitespace =',' 
+        messageArray.whitespace_split =True 
+        sense.show_message(list(messageArray)[-1])
+        sense.clear
 
 
 def sendMeasurements(stopEvent, interval):
@@ -150,6 +163,8 @@ def listenForJoystick():
 def runAgent(configuration):
     # Enter Device specific values
     stopEvent.clear()
+    global reset
+    reset=0
     if c8y.initialized == False:
         serial = getserial()
         c8y.registerDevice(serial,
@@ -158,12 +173,16 @@ def runAgent(configuration):
                            serial,
                            gethardware(),
                            getrevision(),
-                           configuration.get('device', 'operations'))
+                           configuration.get('device', 'operations'),
+                           configuration.get('device', 'requiredinterval'))
     if c8y.initialized == False:
         exit()
-    c8y.connect(on_message, list(configuration.get('device', 'subscribe')))
-    sendThread = Thread(target=sendMeasurements, args=(stopEvent, 5))
+    subscribe = configuration.get('device', 'subscribe').split(',')
+    c8y.connect(on_message, subscribe)
+    sendConfiguration(configuration)
+    sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(configuration.get('device','sendinterval'))))
     sendThread.start()
+
 
 runAgent(config)
 #time.sleep(100)

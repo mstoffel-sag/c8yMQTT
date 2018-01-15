@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 '''
 Created on 19.12.2017
@@ -15,22 +15,31 @@ import threading
 import shlex
 from sense_hat import SenseHat
 from c8yAgent import C8yAgent
-
+import re
 
 stopEvent = threading.Event()
 sense = SenseHat()
-
+config_file = 'pi.properties'
 config = RawConfigParser()
-config.read('pi.properties')
-loglevel = logging.getLevelName(config.get('device', 'loglevel'))
-host = config.get('device','host')
-port = int(config.get('device','port'))
-tls = config.getboolean('device','tls')
-cacert = config.get('device','cacert')
+config.read(config_file)
+
 reset = 0
 resetMax = 3
 
-c8y = C8yAgent(host, port,tls,cacert, loglevel=loglevel)
+c8y = C8yAgent(config.get('device','host'),
+               int(config.get('device','port')),
+               config.getboolean('device','tls'),
+               config.get('device','cacert'),
+               loglevel=logging.getLevelName(config.get('device', 'loglevel')))
+
+def getPayload(message):
+
+    pos = [s.start() for s in re.finditer(',', message)]
+    print(str(pos))
+    payload = message[pos[1]+1:]
+    c8y.logger.debug('Payload: '+payload )
+    return payload
+
 
 def sendTemperature():
     tempString = "211," + str(sense.get_temperature())
@@ -69,11 +78,9 @@ def sendGyroscope():
     c8y.logger.debug("Sending Gyroscope measurement: " + gyString)
     c8y.publish("s/uc/pi", gyString)
 
-def sendConfiguration(configuration):
-    device = configuration['device']
-    configString = ''
-    for key, value in device.items():
-        configString +=key + '=' + value + '\n'
+def sendConfiguration():
+    with open(config_file, 'r') as configFile:
+            configString=configFile.read()
     configString = '113,"' + configString + '"'
     c8y.logger.debug('Sending Config String:' + configString)
     c8y.publish("s/us",configString)
@@ -122,18 +129,7 @@ def gethardware():
     c8y.logger.debug('Found Hardware: ' + myrevision)
     return myrevision
 
-def on_message(client, obj, msg):
-    message = msg.payload.decode('utf-8')
-    c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
-    if message.startswith('1001'):
-        messageArray =  shlex.shlex(message, posix=True)
-        messageArray.whitespace =',' 
-        messageArray.whitespace_split =True 
-        sense.show_message(list(messageArray)[-1])
-        sense.clear
-    if message.startswith('510'):
-        c8y.logger.info('Rebooting')
-        os.system('sudo reboot')
+       
 
 
 
@@ -164,10 +160,37 @@ def listenForJoystick():
                 stopEvent.set()
                 c8y.logger.info('Resetting c8y.properties initializing re-register device....')
                 c8y.reset()
-                runAgent(config)
+                runAgent()
 
 
-def runAgent(configuration):
+
+def on_message(client, obj, msg):
+    message = msg.payload.decode('utf-8')
+    c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
+    if message.startswith('1001'):
+        messageArray =  shlex.shlex(message, posix=True)
+        messageArray.whitespace =',' 
+        messageArray.whitespace_split =True 
+        sense.show_message(list(messageArray)[-1])
+        sense.clear
+    if message.startswith('510'):
+        c8y.logger.info('Rebooting')
+        config.set('device','reboot','1')
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
+        c8y.publish('s/us','503,c8y_Restart')
+#        os.system('sudo reboot')
+    if message.startswith('513'):
+        c8y.logger.info('Received new configuration:' + message)
+        plain_message = getPayload(message).strip('\"')
+        with open(config_file, 'w') as configFile:
+            configFile.write(plain_message)
+            config.read(config_file)
+        c8y.publish('s/us','503,c8y_Configuration')
+
+ 
+
+def runAgent():
     # Enter Device specific values
     stopEvent.clear()
     global reset
@@ -176,23 +199,31 @@ def runAgent(configuration):
         serial = getserial()
         c8y.registerDevice(serial,
                            "PI_" + serial,
-                           configuration.get('device', 'devicetype'),
-                           serial,
+                           config.get('device','devicetype'),
+                           getSerial(),
                            gethardware(),
                            getrevision(),
-                           configuration.get('device', 'operations'),
-                           configuration.get('device', 'requiredinterval'))
+                           config.get('device','operations'),
+                           config.get('device','requiredinterval'))
     if c8y.initialized == False:
         exit()
-    subscribe = configuration.get('device', 'subscribe').split(',')
-    c8y.connect(on_message, subscribe)
-    c8y.publish("s/us", "114,"+ configuration.get('device', 'operations'))
-    sendConfiguration(configuration)
-    sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(configuration.get('device','sendinterval'))))
+
+    c8y.connect(on_message, config.get('device', 'subscribe').split(','))
+    c8y.publish("s/us", "114,"+ config.get('device','operations'))
+    global reboot
+    if config.get('device','reboot') == '1':
+        c8y.logger.info('reboot is active. Publishing Acknowledgement..')
+        c8y.publish('s/us','503,c8y_Restart')
+        config.set('device','reboot','0')
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
+    sendConfiguration()
+    
+    sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))
     sendThread.start()
 
 
-runAgent(config)
+runAgent()
 #time.sleep(100)
 
 

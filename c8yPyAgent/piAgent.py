@@ -16,6 +16,8 @@ import shlex
 from sense_hat import SenseHat
 from c8yAgent import C8yAgent
 import re
+import time
+
 
 stopEvent = threading.Event()
 sense = SenseHat()
@@ -178,7 +180,7 @@ def on_message(client, obj, msg):
         config.set('device','reboot','1')
         with open(config_file, 'w') as configfile:
             config.write(configfile)
-        c8y.publish('s/us','503,c8y_Restart')
+        c8y.publish('s/us','501,c8y_Restart')
 #        os.system('sudo reboot')
     if message.startswith('513'):
         c8y.logger.info('Received new configuration:' + message)
@@ -186,6 +188,8 @@ def on_message(client, obj, msg):
         with open(config_file, 'w') as configFile:
             configFile.write(plain_message)
             config.read(config_file)
+        c8y.publish('s/us','501,c8y_Configuration')
+        time.sleep(4)
         c8y.publish('s/us','503,c8y_Configuration')
 
  
@@ -210,7 +214,6 @@ def runAgent():
 
     c8y.connect(on_message, config.get('device', 'subscribe').split(','))
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
-    global reboot
     if config.get('device','reboot') == '1':
         c8y.logger.info('reboot is active. Publishing Acknowledgement..')
         c8y.publish('s/us','503,c8y_Restart')

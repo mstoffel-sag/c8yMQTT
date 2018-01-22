@@ -176,12 +176,15 @@ def on_message(client, obj, msg):
         sense.show_message(list(messageArray)[-1])
         sense.clear
     if message.startswith('510'):
-        c8y.logger.info('Rebooting')
-        config.set('device','reboot','1')
-        with open(config_file, 'w') as configfile:
-            config.write(configfile)
-        c8y.publish('s/us','501,c8y_Restart')
-#        os.system('sudo reboot')
+        if config.get('device','reboot') != '1':
+            c8y.logger.info('Rebooting')
+            config.set('device','reboot','1')
+            with open(config_file, 'w') as configfile:
+                config.write(configfile)
+            c8y.publish('s/us','501,c8y_Restart')
+            os.system('sudo reboot')
+        else:
+            c8y.logger.info('Received Reboot but already in progress')
     if message.startswith('513'):
         c8y.logger.info('Received new configuration:' + message)
         plain_message = getPayload(message).strip('\"')
@@ -189,6 +192,7 @@ def on_message(client, obj, msg):
             configFile.write(plain_message)
             config.read(config_file)
         c8y.publish('s/us','501,c8y_Configuration')
+        os.system('sudo service c8y restart')
         time.sleep(4)
         c8y.publish('s/us','503,c8y_Configuration')
 
@@ -204,7 +208,7 @@ def runAgent():
         c8y.registerDevice(serial,
                            "PI_" + serial,
                            config.get('device','devicetype'),
-                           getSerial(),
+                           getserial(),
                            gethardware(),
                            getrevision(),
                            config.get('device','operations'),
@@ -216,6 +220,8 @@ def runAgent():
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
     if config.get('device','reboot') == '1':
         c8y.logger.info('reboot is active. Publishing Acknowledgement..')
+        c8y.publish('s/us','501,c8y_Restart')
+        time.sleep(3)
         c8y.publish('s/us','503,c8y_Restart')
         config.set('device','reboot','0')
         with open(config_file, 'w') as configfile:

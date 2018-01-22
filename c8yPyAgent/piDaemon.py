@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 '''
 Created on 19.12.2017
@@ -234,6 +233,18 @@ class PiDaemon():
     
         sendThread = Thread(target=self.sendMeasurements, args=(self.stopEvent, int(self.config.get('device','sendinterval'))))
         sendThread.start()
+class DaemonRunner(object):
+
+    self.parse_args()
+    self.app = app
+    self.daemon_context = DaemonContext()
+    self.daemon_context.stdin = open(app.stdin_path, 'r') 
+    # for linux /dev/tty must be opened without buffering and with b
+    self.daemon_context.stdout = open(app.stdout_path, 'wb+',buffering=0)
+    #  w+ -> wb+
+    self.daemon_context.stderr = open(
+    app.stderr_path, 'wb+', buffering=0)
+
 
 pi_daemon = PiDaemon()
 daemon_runner = runner.DaemonRunner(pi_daemon)

@@ -8,7 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os, time, threading, ssl
 import sys
-
+import re
 import paho.mqtt.client as mqtt
 
 
@@ -63,6 +63,8 @@ class C8yAgent(object):
             
     def on_connect(self,client, userdata, flags, rc):
         self.logger.debug("connect: " + str(rc))
+        if rc==0:
+            self.connected=True
 
     def on_publish(self,client, obj, mid):
         self.logger.debug("publish: " + str(mid))
@@ -74,7 +76,7 @@ class C8yAgent(object):
         self.logger.debug("Log: " +string)
     
     def connect(self,on_message,topics):
-        
+        self.connected=False
         ''' Will connect to the mqtt broker
             
             Keyword Arguments:
@@ -95,13 +97,22 @@ class C8yAgent(object):
         self.client.on_subscribe = self.on_subscribe
         self.client.on_log = self.on_log
         self.client.connect(self.mqtthost, self.mqttport)
-        self.client.loop_start()
-        self.client.subscribe('s/ds', 2)
+        count=0
+        while self.connected==False and  count < 20: 
+            time.sleep(.2)
+            count+=1
+        if self.connected!=False:
+            self.logger.error('Could not connect to the MQTT Broker.')
+            return False
+        else:
+            self.client.loop_start()
+            for t in topics:
+                self.client.subscribe(t, 2)
+                self.logger.debug('Subscribing to topic: ' + t)
+            time.sleep(2)
+            self.logger.info('Connected and subscribed successfully.')
+            return True
         
-        for t in topics:
-            self.client.subscribe(t, 2)
-            self.logger.debug('Subscribing to topic: ' + t)
-
 
 
     def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):
@@ -111,7 +122,8 @@ class C8yAgent(object):
         Please create a device registration on the platfomrm bevorhand
         
         Keyword Arguments:
-        clientId -- external Id of the device
+        clientId -- external:wq
+        Id of the device
         deviceName -- Device Name (displayed in the UI)
         deviceType -- Device Type
         serialNumber -- Serial of the device
@@ -150,8 +162,7 @@ class C8yAgent(object):
             else:
                 self.initialized = True
                 break
-        self.client.loop_stop(True)
-        self.client.disconnect()
+        self.disconnect()
             
         if self.initialized == False:
             self.logger.error( 'Could not register device. Exiting')
@@ -166,8 +177,7 @@ class C8yAgent(object):
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         self.client.publish("s/us", "114,"+ self.operationString,2)
         self.logger.debug( 'Stop Loop')
-        self.client.loop_stop(True)
-        self.client.disconnect()
+        self.disconnect
 
 
     def publish(self,topic,payload):
@@ -176,16 +186,21 @@ class C8yAgent(object):
     def reset(self):
         self.initialized = False
         self.logger.info('reseting')
-        self.client.loop_stop()
         self.logger.debug('loop stopped')
-        self.client.disconnect()
+        self.disconnect()
         self.logger.debug('client disconnected')
         if os.path.isfile(self.configFile):
             os.remove(self.configFile)
             self.logger.debug('config file removed')
         else:
             self.logger.debug('config file already missing')
-          
+
+    def disconnect(self):
+        time.sleep(5)
+        self.client.disconnect()
+        self.client.loop_stop()
+        self.connected=False
+
     def __on_messageRegistration(self,client,userdata,message):
         message = message.payload.decode('utf-8')
         self.logger.debug("Received Registration Message: " + message)
@@ -219,7 +234,14 @@ class C8yAgent(object):
         return(pwd)
 
 
-        
+    def getPayload(self,message):
+
+        pos = [s.start() for s in re.finditer(',', message)]
+        print(str(pos))
+        payload = message[pos[1]+1:]
+        self.logger.debug('Payload: '+payload )
+        return payload
+
         
         
         

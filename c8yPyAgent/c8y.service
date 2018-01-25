@@ -3,7 +3,8 @@ Description=Cumulocity PI Agent
 After=multi-user.target
 
 [Service]
-ExecStartPre=/bin/sleep 30
+User=pi
+ExecStartPre=/bin/sleep 3
 Type=idle
 #WorkingDirectory=/home/pi/git/sag-d-iot.python_pi/c8yPyAgent
 WorkingDirectory=/opt/softwareag/c8yPyAgent

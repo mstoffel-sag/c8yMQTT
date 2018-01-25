@@ -15,7 +15,6 @@ import threading
 import shlex
 from sense_hat import SenseHat
 from c8yAgent import C8yAgent
-import re
 import time
 
 
@@ -33,14 +32,6 @@ c8y = C8yAgent(config.get('device','host'),
                config.getboolean('device','tls'),
                config.get('device','cacert'),
                loglevel=logging.getLevelName(config.get('device', 'loglevel')))
-
-def getPayload(message):
-
-    pos = [s.start() for s in re.finditer(',', message)]
-    print(str(pos))
-    payload = message[pos[1]+1:]
-    c8y.logger.debug('Payload: '+payload )
-    return payload
 
 
 def sendTemperature():
@@ -182,20 +173,27 @@ def on_message(client, obj, msg):
             with open(config_file, 'w') as configfile:
                 config.write(configfile)
             c8y.publish('s/us','501,c8y_Restart')
-            os.system('sudo reboot')
+            c8y.disconnect()
+  #          os.system('sudo reboot')
         else:
             c8y.logger.info('Received Reboot but already in progress')
-    if message.startswith('513'):
-        c8y.logger.info('Received new configuration:' + message)
-        plain_message = getPayload(message).strip('\"')
-        with open(config_file, 'w') as configFile:
-            configFile.write(plain_message)
-            config.read(config_file)
-        c8y.publish('s/us','501,c8y_Configuration')
-        os.system('sudo service c8y restart')
-        time.sleep(4)
-        c8y.publish('s/us','503,c8y_Configuration')
-
+'''    if message.startswith('513'):
+            plain_message = c8y.getPayload(message).strip('\"')
+            with open(config_file, 'w') as configFile:
+                config.read(plain_message)
+                config.set('device','config_update','1')
+                config.write(configFile)
+            c8y.logger.info('Sending Config Update executing')
+            c8y.publish('s/us','501,c8y_Configuration')
+            c8y.logger.info('Restarting Service')
+            c8y.disconnect()
+            os.system('sudo service c8y restart')
+        else:
+            c8y.logger.info('Received Config Update but already in progress')
+    if message.startswith('520'):
+        c8y.logger.info('Received Config Upload. Sending config')
+        sendConfiguration() 
+'''
  
 
 def runAgent():
@@ -217,23 +215,29 @@ def runAgent():
         exit()
 
     c8y.connect(on_message, config.get('device', 'subscribe').split(','))
-    c8y.publish("s/us", "114,"+ config.get('device','operations'))
-    if config.get('device','reboot') == '1':
-        c8y.logger.info('reboot is active. Publishing Acknowledgement..')
-        c8y.publish('s/us','501,c8y_Restart')
-        time.sleep(3)
-        c8y.publish('s/us','503,c8y_Restart')
-        config.set('device','reboot','0')
-        with open(config_file, 'w') as configfile:
-            config.write(configfile)
-    sendConfiguration()
-    
-    sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))
-    sendThread.start()
+    if c8y.connected:
 
+        c8y.publish("s/us", "114,"+ config.get('device','operations'))
+        if config.get('device','reboot') == '1':
+            c8y.logger.info('reboot is active. Publishing Acknowledgement..')
+            c8y.publish('s/us','503,c8y_Restart')
+            config.set('device','reboot','0')
+            with open(config_file, 'w') as configfile:
+                config.write(configfile)
+        if config.get('device','config_update') == '1':
+            c8y.logger.info('Config Update is active. Publishing Acknowledgement..')
+            c8y.publish('s/us','503,c8y_Configuration')
+            config.set('device','config_update','0')
+            with open(config_file, 'w') as configfile:
+                config.write(configfile)
+        sendConfiguration()
+    
+        sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))
+        sendThread.start()
+
+    #time.sleep(100)
 
 runAgent()
-#time.sleep(100)
 
 
 

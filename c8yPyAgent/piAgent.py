@@ -129,12 +129,14 @@ def gethardware():
 def sendMeasurements(stopEvent, interval):
     try:
         while not stopEvent.wait(interval):
+            '''
             listenForJoystick()
             sendTemperature()
             sendAcceleration()
             sendHumidity()
             sendPressure()
             sendGyroscope()
+            '''
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
         c8y.logger.info('Exiting sendMeasurement...')
@@ -167,34 +169,51 @@ def on_message(client, obj, msg):
         sense.show_message(list(messageArray)[-1])
         sense.clear
     if message.startswith('510'):
+        Thread(target=restart).start()
+#    if message.startswith('513'):
+#        Thread(target=updateConfig,args=(message,)).start()
+#    if message.startswith('520'):
+#        c8y.logger.info('Received Config Upload. Sending config')
+#        sendConfiguration() 
+
+
+
+def restart():
         if config.get('device','reboot') != '1':
             c8y.logger.info('Rebooting')
+            c8y.publish('s/us','501,c8y_Restart')
             config.set('device','reboot','1')
             with open(config_file, 'w') as configfile:
                 config.write(configfile)
-            c8y.publish('s/us','501,c8y_Restart')
             c8y.disconnect()
   #          os.system('sudo reboot')
+            os.system('sudo service c8y restart')
         else:
             c8y.logger.info('Received Reboot but already in progress')
-'''    if message.startswith('513'):
+
+def updateConfig(message):
+        
+        c8y.logger.info('UpdateConfig')
+        if config.get('device','config_update') != '1':
             plain_message = c8y.getPayload(message).strip('\"')
             with open(config_file, 'w') as configFile:
                 config.read(plain_message)
                 config.set('device','config_update','1')
                 config.write(configFile)
+                c8y.logger.debug('Current config:' + dict(config.items('device')))
             c8y.logger.info('Sending Config Update executing')
             c8y.publish('s/us','501,c8y_Configuration')
-            c8y.logger.info('Restarting Service')
+            with open(config_file, 'r') as configFile:
+                configString=configFile.read()
+                c8y.logger.debug('Saved Config File: ' + configString)
             c8y.disconnect()
+            c8y.logger.info('Restarting Service')
             os.system('sudo service c8y restart')
         else:
             c8y.logger.info('Received Config Update but already in progress')
-    if message.startswith('520'):
-        c8y.logger.info('Received Config Upload. Sending config')
-        sendConfiguration() 
-'''
- 
+
+
+
 
 def runAgent():
     # Enter Device specific values

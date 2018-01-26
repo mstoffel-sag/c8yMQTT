@@ -65,6 +65,7 @@ class C8yAgent(object):
         self.logger.debug("connect: " + str(rc))
         if rc==0:
             self.connected=True
+            self.logger.debug('!!Connected!!')
 
     def on_publish(self,client, obj, mid):
         self.logger.debug("publish: " + str(mid))
@@ -98,7 +99,7 @@ class C8yAgent(object):
         self.client.on_log = self.on_log
         self.client.connect(self.mqtthost, self.mqttport)
         count=0
-        while self.connected==False and  count < 20: 
+        while self.connected==False and  count < 50: 
             time.sleep(.2)
             count+=1
         if self.connected!=False:
@@ -109,7 +110,7 @@ class C8yAgent(object):
             for t in topics:
                 self.client.subscribe(t, 2)
                 self.logger.debug('Subscribing to topic: ' + t)
-            time.sleep(2)
+            time.sleep(5)
             self.logger.info('Connected and subscribed successfully.')
             return True
         
@@ -177,7 +178,7 @@ class C8yAgent(object):
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         self.client.publish("s/us", "114,"+ self.operationString,2)
         self.logger.debug( 'Stop Loop')
-        self.disconnect
+        self.disconnect()
 
 
     def publish(self,topic,payload):
@@ -196,7 +197,7 @@ class C8yAgent(object):
             self.logger.debug('config file already missing')
 
     def disconnect(self):
-        time.sleep(5)
+        time.sleep(10)
         self.client.disconnect()
         self.client.loop_stop()
         self.connected=False

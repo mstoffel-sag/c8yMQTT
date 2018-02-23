@@ -14,7 +14,7 @@ from threading import Thread
 import threading
 import shlex
 from sense_hat import SenseHat
-from c8yAgent import C8yAgent
+from c8yMQTT import C8yMQTT
 import time
 import io
 
@@ -27,7 +27,7 @@ config.read(config_file)
 reset = 0
 resetMax = 3
 
-c8y = C8yAgent(config.get('device','host'),
+c8y = C8yMQTT(config.get('device','host'),
                int(config.get('device','port')),
                config.getboolean('device','tls'),
                config.get('device','cacert'),
@@ -161,11 +161,13 @@ def on_message(client, obj, msg):
     message = msg.payload.decode('utf-8')
     c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
     if message.startswith('1001'):
+        Thread(target=setCommandExecuting,args=('c8y_Message',)).start()
         messageArray =  shlex.shlex(message, posix=True)
         messageArray.whitespace =',' 
         messageArray.whitespace_split =True 
         sense.show_message(list(messageArray)[-1])
         sense.clear
+        Thread(target=setCommandSuccessfull,args=('c8y_Message',)).start()
     if message.startswith('510'):
         Thread(target=restart).start()
     if message.startswith('513'):
@@ -174,7 +176,13 @@ def on_message(client, obj, msg):
 #        c8y.logger.info('Received Config Upload. Sending config')
 #        sendConfiguration() 
 
+def setCommandExecuting(command):
+    c8y.logger.info('Setting command: '+ command + ' to executing')
+    c8y.publish('s/us','501,'+command)
 
+def setCommandSuccessfull(command):
+    c8y.logger.info('Setting command: '+ command + ' to successful')
+    c8y.publish('s/us','503,'+command)
 
 def restart():
         if config.get('device','reboot') != '1':

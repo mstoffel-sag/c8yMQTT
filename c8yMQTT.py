@@ -12,7 +12,7 @@ import re
 import paho.mqtt.client as mqtt
 
 
-class C8yAgent(object):
+class C8yMQTT(object):
     '''
     Cumulocity Python Agent
     Usage Example:

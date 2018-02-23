@@ -116,7 +116,7 @@ class C8yAgent(object):
         
 
 
-    def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):
+    def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval,bootstrap_password):
         
         '''
         Will register a new device to the c8y platform.
@@ -143,7 +143,7 @@ class C8yAgent(object):
         self.operationString = operationString
         
         self.client = mqtt.Client(client_id=self.clientId)
-        self.client.username_pw_set('management/devicebootstrap', 'Fhdt1bb1f')
+        self.client.username_pw_set('management/devicebootstrap', bootstrap_password)
         self.client.on_message = self.__on_messageRegistration
         self.client.on_publish = self.on_publish
         self.client.on_connect = self.on_connect

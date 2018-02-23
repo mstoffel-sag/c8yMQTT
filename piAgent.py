@@ -224,7 +224,8 @@ def runAgent():
                            gethardware(),
                            getrevision(),
                            config.get('device','operations'),
-                           config.get('device','requiredinterval'))
+                           config.get('device','requiredinterval'),
+                           config.get('device','bootstrap_pwd'))
     if c8y.initialized == False:
         exit()
 

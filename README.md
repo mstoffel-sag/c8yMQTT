@@ -46,8 +46,10 @@ The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to
 
 ### Register Device
 
+__c8y.properties__  
 c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. 
 
+  
 [credentials]  
 user =  
 tenant =   
@@ -56,7 +58,11 @@ clientid =
 
 If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
 
-To register your pi In Cumulocity -> Device Management create a new Device Registration using the serial of your PI.
+To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration using the serial of your PI.
+
+__pi.properties__
+
+the pi.properties file holds device specific parameters. To autoregister your device you need to provide the bootstrap_pwd this can be obtained via the cumulocity support.
 
 ### Agent Run
 Checkout the project. For testing just run:  

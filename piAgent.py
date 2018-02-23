@@ -225,6 +225,7 @@ def runAgent():
     reset=0
     if c8y.initialized == False:
         serial = getserial()
+        c8y.logger.info('Not initialized. Try to registering Device with serial: '+ serial)
         c8y.registerDevice(serial,
                            "PI_" + serial,
                            config.get('device','devicetype'),

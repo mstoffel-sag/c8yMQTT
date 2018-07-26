@@ -42,7 +42,7 @@ echo "alias python='/usr/bin/python3'" >>  ~/.bashrc
 
 ### Cumulocity
 
-The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to be imported into the cumulocity tenant beforehand. 
+The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to be imported into the cumulocity tenant beforehand. It can be imported via Devicemanagement -> Device types -> SmartREST templates.
 
 ### Register Device
 
@@ -58,7 +58,7 @@ clientid =
 
 If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
 
-To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration using the serial of your PI.
+To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set.
 
 __pi.properties__
 
@@ -69,5 +69,5 @@ Checkout the project. For testing just run:
 python3 piAgent.py  
 
 ### Agent Install
-Execute install.sh (You need to have write access to /opt).  
+Execute sudo install.sh (You need to have write access to /opt).  
 A service called c8y will be registerd with systemd

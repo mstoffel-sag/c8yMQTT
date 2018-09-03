@@ -29,7 +29,7 @@ dtparam=spi=on
 
 #### Python3
 
-pip install paho-mqtt  
+pip3 install paho-mqtt  
 sudo apt-get install python3-pip  
 sudo apt-get install python3  
 sudo apt-get  install python-dev python3-dev  
@@ -58,7 +58,7 @@ clientid =
 
 If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
 
-To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set.
+To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set.
 
 __pi.properties__
 

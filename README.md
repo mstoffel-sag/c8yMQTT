@@ -28,13 +28,13 @@ To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with 
 dtparam=spi=on
 
 #### Python3
-
-pip3 install paho-mqtt  
+ 
 sudo apt-get install python3-pip  
 sudo apt-get install python3  
-sudo apt-get  install python-dev python3-dev  
+sudo apt-get install python-dev python3-dev  
 sudo apt-get install ca-certificates  
-sudo apt-get install sense-hat  
+sudo apt-get install sense-hat
+pip3 install paho-mqtt 
 
 echo "alias python='/usr/bin/python3'" >>  ~/.bashrc
 

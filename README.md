@@ -77,9 +77,14 @@ Execute sudo install.sh (You need to have write access to /opt).
 A service called c8y will be registerd with systemd
 
 
-### PC Agent
-The pcAgent.py module is a slight modification to run on PC Hardware. It will read CPU and Memory Usage via the psutil module.
-PC Agent can be run within Docker. Dockerfile.pcAgent can be used to build an image:
+## pcAgent.py Module
+The pcAgent.py module is a slight modification to run on PC Hardware. It shares most of the configuration but will read CPU and Memory Usage via the psutil module. The serial/model  has to be configured inside the pcAgent.py file:
+
+serial = 'putyourserial'
+model = 'MyPcModel'
+
+### Docker Support PC Agent
+PC Agent can run within Docker. Dockerfile.pcAgent can be used to build an image:
 
 Build:
 docker build -t pcagent -f .\Dockerfile.pcAgent .

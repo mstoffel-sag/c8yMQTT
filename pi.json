@@ -177,6 +177,92 @@
         "msgId": "999",
         "response": false,
         "name": "BueroTemperatur"
+      },
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "CPULoad.L.value",
+            "type": "NUMBER",
+            "value": null
+          },
+          {
+            "path": "CPULoad.L.unit",
+            "type": "STRING",
+            "value": "%"
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "CPULoad"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "995",
+        "response": false,
+        "name": "CPU Load"
+      },
+      {
+        "api": "MEASUREMENT",
+        "byId": true,
+        "customValues": [
+          {
+            "path": "Memory.total.value",
+            "type": "INTEGER",
+            "value": null
+          },
+          {
+            "path": "Memory.total.unit",
+            "type": "STRING",
+            "value": "MB"
+          },
+          {
+            "path": "Memory.available.value",
+            "type": "INTEGER",
+            "value": null
+          },
+          {
+            "path": "Memory.available.unit",
+            "type": "STRING",
+            "value": "MB"
+          },
+          {
+            "path": "Memory.swap.value",
+            "type": "INTEGER",
+            "value": null
+          },
+          {
+            "path": "Memory.swap.unit",
+            "type": "STRING",
+            "value": "MB"
+          }
+        ],
+        "externalIdType": "c8y_Serial",
+        "mandatoryValues": [
+          {
+            "path": "$.type",
+            "type": "STRING",
+            "value": "MemoryUsage"
+          },
+          {
+            "path": "$.time",
+            "type": "DATE",
+            "value": null
+          }
+        ],
+        "method": "POST",
+        "msgId": "996",
+        "response": false,
+        "name": "Memory Usage"
       }
     ],
     "responseTemplates": [

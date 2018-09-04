@@ -65,7 +65,8 @@ To autoregister your pi got to In Cumulocity -> Device Management create a new D
 
 __pi.properties__
 
-the pi.properties file holds device specific parameters. To autoregister your device you need to provide the bootstrap_pwd this can be obtained via the cumulocity support.
+the pi.properties file holds device specific parameters. To autoregister your device you need to provide the bootstrap_pwd this can be 
+obtained via the cumulocity support.
 
 ### Agent Run
 Checkout the project. For testing just run:  
@@ -74,3 +75,14 @@ python3 piAgent.py
 ### Agent Install
 Execute sudo install.sh (You need to have write access to /opt).  
 A service called c8y will be registerd with systemd
+
+
+### PC Agent
+The pcAgent.py module is a slight modification to run on PC Hardware. It will read CPU and Memory Usage via the psutil module.
+PC Agent can be run within Docker. Dockerfile.pcAgent can be used to build an image:
+
+Build:
+docker build -t pcagent -f .\Dockerfile.pcAgent .
+
+Run:
+docker run -it -v $PWD:/usr/src/app pcagent

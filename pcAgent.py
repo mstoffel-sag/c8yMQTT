@@ -23,7 +23,7 @@ import psutil
 config_file = 'pi.properties'
 
 #Configure Serial will be used for device Registration.
-serial = '123456789'
+serial = '0123456789'
 
 # Configure Model
 model = 'MyPcModel'
@@ -33,7 +33,7 @@ config.read(config_file)
 
 reset = 0
 resetMax = 3
-
+stopEvent = threading.Event()
 c8y = C8yMQTT(config.get('device','host'),
                int(config.get('device','port')),
                config.getboolean('device','tls'),

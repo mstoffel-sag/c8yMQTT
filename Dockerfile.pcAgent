@@ -1,0 +1,10 @@
+FROM python:3
+
+WORKDIR /usr/src/app
+
+RUN apt-get update && apt-get install ca-certificates 
+RUN pip install --no-cache-dir  paho-mqtt
+RUN pip install --no-cache-dir  psutil
+
+
+CMD [ "python", "./pcAgent.py" ]

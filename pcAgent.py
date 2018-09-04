@@ -19,8 +19,15 @@ import io
 import platform
 import psutil
 
-stopEvent = threading.Event()
+
 config_file = 'pi.properties'
+
+#Configure Serial will be used for device Registration.
+serial = '123456789'
+
+# Configure Model
+model = 'MyPcModel'
+
 config = RawConfigParser()
 config.read(config_file)
 
@@ -121,13 +128,12 @@ def runAgent():
     global reset
     reset=0
     if c8y.initialized == False:
-        serial = "3CKZ1N2"
         c8y.logger.info('Not initialized. Try to registering Device with serial: '+ serial)
         c8y.registerDevice(serial,
                            platform.system() + '_'+ serial,
                            config.get('device','devicetype'),
                            serial,
-		           "Dell Edge PC 5000"
+							model,
                            ' '.join(platform.linux_distribution()),
                            config.get('device','operations'),
                            config.get('device','requiredinterval'),

@@ -49,6 +49,9 @@ The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to
 __c8y.properties__  
 c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. 
 
+!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY RERGISTERED WITH IT'S SERIAL NUMBER!!!
+If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
+
   
 [credentials]  
 user =  

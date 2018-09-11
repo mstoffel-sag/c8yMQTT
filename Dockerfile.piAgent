@@ -1,0 +1,16 @@
+from resin/rpi-raspbian:stretch
+
+WORKDIR /usr/src/app
+
+COPY requirements.txt ./
+
+RUN apt-get update && apt-get install -y ca-certificates \
+wget \
+python \
+python3 \
+python3-pip \
+sense-hat
+
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+CMD [ "python3", "./pcAgent.py" ]

@@ -83,11 +83,11 @@ The pcAgent.py module is a slight modification to run on PC Hardware. It shares 
 serial = 'putyourserial'
 model = 'MyPcModel'
 
-### Docker Support PC Agent
-PC Agent can run within Docker. Dockerfile.pcAgent can be used to build an image:
+### Docker Support 
+PC Agent and PI Agent can run within Docker. Dockerfiles can be used to build an image:
 
 Build - PC:
-docker build -t pcagent -f .\Dockerfile.pcAgent .
+docker build -t pcagent -f ./Dockerfile.pcAgent .
 
 Build - Raspberry Pi:
 docker build -t piagent -f ./Dockerfile.piAgent .

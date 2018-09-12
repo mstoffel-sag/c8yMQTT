@@ -86,8 +86,14 @@ model = 'MyPcModel'
 ### Docker Support PC Agent
 PC Agent can run within Docker. Dockerfile.pcAgent can be used to build an image:
 
-Build:
+Build - PC:
 docker build -t pcagent -f .\Dockerfile.pcAgent .
 
-Run:
+Build - Raspberry Pi:
+docker build -t piagent -f ./Dockerfile.piAgent .
+
+Run - PC:
 docker run -it -v $PWD:/usr/src/app pcagent
+
+Run - Raspberry Pi:
+docker run -it -v $PWD:/usr/src/app --privileged=true piagent

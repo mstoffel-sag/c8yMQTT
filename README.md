@@ -6,9 +6,11 @@ A cumulocity tenant to try out it can be provisioned as a trial at:
 
 http://cumulocity.com/ -> Try Cumulocity For Free
 
-Cumulocity IoT enables companies to to quickly implement smart IoT solutions with little effort. For rapid prototyping the Raspberry Pi including the SensHat sensor array is a very easy start to implement basic usecases.
+For rapid prototyping the Raspberry Pi including the SensHat sensor array is a very easy start to implement basic usecases.
 
-![PI](pics/pi.jpg)
+![PI](pics/rpi.jpg)
+
+Cumulocity IoT enables companies to to quickly implement smart IoT solutions with little effort. 
 
 ![Dashboard](pics/Dashboard.PNG)
 
@@ -97,8 +99,6 @@ The Agent supports the following functions:
 * Send Message to the Device -> Via the Send Message Widget in the Cockpit Application. Text can be send to the PI and will be displayed on the SensHats LED  Matrix
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
 * Joystick -> Events are created on pressing. If the joystick is pressed three times the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
-
-
 
 ## pcAgent.py Module
 The pcAgent.py module is a slight modification to run on PC Hardware. It shares most of the configuration but will read CPU and Memory Usage via the psutil module. 

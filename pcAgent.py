@@ -134,7 +134,7 @@ def runAgent():
                            config.get('device','devicetype'),
                            serial,
 							model,
-                           ' '.join(platform.linux_distribution()),
+                           ' '.join(platform.release()),
                            config.get('device','operations'),
                            config.get('device','requiredinterval'),
                            config.get('device','bootstrap_pwd'))

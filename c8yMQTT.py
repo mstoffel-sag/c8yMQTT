@@ -156,7 +156,7 @@ class C8yMQTT(object):
         self.client.subscribe("s/dcr")
         self.client.subscribe("s/e")
         
-        for x in range(0,10):
+        while True:
             if self.initialized == False:
                 self.client.publish("s/ucr", "", 2)
                 time.sleep(5)

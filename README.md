@@ -8,6 +8,10 @@ http://cumulocity.com/ -> Try Cumulocity For Free
 
 Cumulocity IoT enables companies to to quickly implement smart IoT solutions with little effort. For rapid prototyping the Raspberry Pi including the SensHat sensor array is a very easy start to implement basic usecases.
 
+![PI](pics/pi.jpg)
+
+![Dashboard](pics/Dashboard.PNG)
+
 The Cumulocity python agent is devided into two python modules. C8yMQTT is sort of a small SDK that wraps a lot of functionality into function calls. piAgent.py Module levrerages C8yMQTT.py to implement device specific functions like sending measurements, updateing configurations etc. 
 
 

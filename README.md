@@ -102,7 +102,7 @@ python3 piAgent.py
 ### Agent Install
 The Agent supports a few operations like Reload Configuration / Save Configuration and Restart. In order to work these operators need to perform a restart. This is done via a systemd service which has to be registered.
 
-Execute sudo install.sh (You need to have write access to /opt).  
+Execute install.sh (You need sudo rights).  
 A service called c8y will be registered with systemd
 
 ### Build in functions

@@ -1,10 +1,21 @@
-# Cumulocity Pyhton3 Agent
+# Cumulocity IoT Pyhton3 Agent
 
-This project is a demo implementation and has no intention to meet production standards. Rather the aim is to show an example how a cumulocity agent could be implemented in python.
+!!!DISCLAIMER!!! 
+This project is a demo implementation and has no intention to meet production standards. It's aim is to illustrate how a Cumulocity agent could be implemented in python.
 
 A cumulocity tenant to try out it can be provisioned as a trial at:
 
-http://cumulocity.com/ -> Try Cumulocity Free
+http://cumulocity.com/ -> Try Cumulocity For Free
+
+For rapid prototyping Raspberry Pi including the SensHat Sensor Array is a very easy start to implement basic use cases.
+
+![PI](pics/rpi.jpg)
+
+Cumulocity IoT enables companies to to quickly implement smart IoT solutions with little effort. 
+
+![Dashboard](pics/Dashboard.PNG)
+
+The Cumulocity python agent is deviceid into two python modules. C8yMQTT is sort of a small SDK that wraps a lot of functionality into function calls. piAgent.py Module leverages C8yMQTT.py to implement device specific functions like sending measurements, updateing configurations etc. 
 
 
 ## C8yMQTT Class
@@ -21,11 +32,11 @@ The class C8yMQTT let's you connect your device to the Cumulocity Cloud using mq
 To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with device specific functionality (Send Measurements etc.). piAgent.py provides a sample implementation for the Raspberry PI 3.
 
 
-### Prerequisites for Raspian distribution
+## Prerequisites for Raspian distribution
 
 #### Enable SPI Interface
 
-/boot/config.txt
+edit /boot/config.txt and enable
 dtparam=spi=on
 
 #### Python3
@@ -39,18 +50,18 @@ pip3 install paho-mqtt
 
 echo "alias python='/usr/bin/python3'" >>  ~/.bashrc
 
-## Getting Started
+# Getting Started
 
-### Cumulocity
+## Configure the Cumulocity Tenant
 
 The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to be imported into the cumulocity tenant beforehand. It can be imported via Devicemanagement -> Device types -> SmartREST templates.
 
 ### Register Device
 
 __c8y.properties__  
-c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. 
+c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
 
-!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY RERGISTERED WITH IT'S SERIAL NUMBER!!!
+!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY REGISTERED WITH IT'S SERIAL NUMBER!!!
 If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
 
   
@@ -66,20 +77,53 @@ To autoregister your pi got to In Cumulocity -> Device Management create a new D
 
 __pi.properties__
 
-the pi.properties file holds device specific parameters. To autoregister your device you need to provide the bootstrap_pwd this can be 
-obtained via the cumulocity support.
+the pi.properties file holds device specific parameters.
+* host -> Mqtt host (works for cumulocity.com do not change except you running on another instance of Cumulocity )
+* port -> Mqtt port it'll be set either to 1883 for tcp or to 8883 for  Transport Encryption via TLS
+* tls -> Boolean which indicates whether to use tls or not. Must match the port settings
+* cacert -> path to a certificate (pem format) that holds all trusted root certificates
+* operations -> all supported operations of the agent which are implemented in an agent module
+* subscribe -> Topics the agent will subscribe to.
+* deviceType -> speaks for itself
+* sendinterval -> Loop time of the RunAgent() function. Indicates in which time frame measurements etc. are read and send
+* requiredinterval -> Sets the time frame in which the device must contact the platform in order to be displayed connected. 
+* Loglevel -> speaks for itself
+* reboot -> will be set by the restart device command to prevent from a infinite loop.
+* config_update -> same as reboot
+* bootstrap_pwd -> needed for auto registration process
+*  
+
 
 ### Agent Run
 Checkout the project. For testing just run:  
 python3 piAgent.py  
+ 
 
 ### Agent Install
-Execute sudo install.sh (You need to have write access to /opt).  
-A service called c8y will be registerd with systemd
+The Agent supports a few operations like Reload Configuration / Save Configuration and Restart. In order to work these operators need to perform a restart. This is done via a systemd service which has to be registered.
 
+Execute sudo install.sh (You need to have write access to /opt).  
+A service called c8y will be registered with systemd
+
+### Build in functions
+
+The Agent supports the following functions:
+
+* Configuration -> The content of pi.properties will be displayed under Device Management and can be save to the device
+* Restart -> The Raspberry PI an be rebooted via the restart command.
+* Send Message to the Device -> Via the Send Message Widget in the Cockpit Application. Text can be send to the PI and will be displayed on the SensHats LED  Matrix
+* Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
+* Joystick -> Events are created on pressing. If the joystick is pressed three times the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
 
 ## pcAgent.py Module
-The pcAgent.py module is a slight modification to run on PC Hardware. It shares most of the configuration but will read CPU and Memory Usage via the psutil module. The serial/model  has to be configured inside the pcAgent.py file:
+The pcAgent.py module is a slight modification to run on PC Hardware. It shares most of the configuration but will read CPU and Memory Usage via the psutil module. 
+
+Prerequisites for the module to run is the psutils module. Under Windows Microsoft Visual C++ 14.0 is required. Get it with "Microsoft Visual C++ Build Tools": 
+
+https://visualstudio.microsoft.com/downloads/
+
+then install pip install psutils
+The serial/model  has to be configured inside the pcAgent.py file:
 
 serial = 'putyourserial'
 model = 'MyPcModel'

@@ -31,9 +31,16 @@ class C8yMQTT(object):
         '''
         self.logger = logging.getLogger('C8yAgent')
         self.logger.setLevel(loglevel)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         self.logHandler = RotatingFileHandler('c8yAgent.log', maxBytes=1*1024*1024,backupCount=5)
+        self.logHandler.setFormatter(formatter) 
+
+        self.logHandlerStOut = logging.StreamHandler(sys.stdout)
+        self.logHandlerStOut.setFormatter(formatter)
+
+        self.logger.addHandler(self.logHandlerStOut)
         self.logger.addHandler(self.logHandler)
-        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        
         
         self.config = RawConfigParser()
         self.configFile = 'c8y.properties'
@@ -62,10 +69,13 @@ class C8yMQTT(object):
             self.initialized = True
             
     def on_connect(self,client, userdata, flags, rc):
-        self.logger.debug("connect: " + str(rc))
+        self.logger.debug("connect result: " + str(rc))
         if rc==0:
             self.connected=True
             self.logger.debug('!!Connected!!')
+        else:
+            self.logger.debug('!!Connection Error!!')
+
 
     def on_publish(self,client, obj, mid):
         self.logger.debug("publish: " + str(mid))

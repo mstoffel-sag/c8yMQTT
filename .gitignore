@@ -1,1 +1,3 @@
 *.log
+pi.properties
+__pycache__

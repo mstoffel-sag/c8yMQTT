@@ -1,12 +1,13 @@
-# Cumulocity Pyhton3 Agent
+# Cumulocity IoT Pyhton3 Agent
 
-!!!DISCLAIMER!!! This project is a demo implementation and has no intention to meet production standards. It's aim is to illustrate how a cumulocity agent could be implemented in python.
+!!!DISCLAIMER!!! 
+This project is a demo implementation and has no intention to meet production standards. It's aim is to illustrate how a Cumulocity agent could be implemented in python.
 
 A cumulocity tenant to try out it can be provisioned as a trial at:
 
 http://cumulocity.com/ -> Try Cumulocity For Free
 
-For rapid prototyping the Raspberry Pi including the SensHat sensor array is a very easy start to implement basic usecases.
+For rapid prototyping Raspberry Pi including the SensHat Sensor Array is a very easy start to implement basic use cases.
 
 ![PI](pics/rpi.jpg)
 
@@ -14,7 +15,7 @@ Cumulocity IoT enables companies to to quickly implement smart IoT solutions wit
 
 ![Dashboard](pics/Dashboard.PNG)
 
-The Cumulocity python agent is devided into two python modules. C8yMQTT is sort of a small SDK that wraps a lot of functionality into function calls. piAgent.py Module levrerages C8yMQTT.py to implement device specific functions like sending measurements, updateing configurations etc. 
+The Cumulocity python agent is deviceid into two python modules. C8yMQTT is sort of a small SDK that wraps a lot of functionality into function calls. piAgent.py Module leverages C8yMQTT.py to implement device specific functions like sending measurements, updateing configurations etc. 
 
 
 ## C8yMQTT Class
@@ -58,9 +59,9 @@ The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to
 ### Register Device
 
 __c8y.properties__  
-c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. 
+c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
 
-!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY RERGISTERED WITH IT'S SERIAL NUMBER!!!
+!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY REGISTERED WITH IT'S SERIAL NUMBER!!!
 If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
 
   
@@ -76,8 +77,22 @@ To autoregister your pi got to In Cumulocity -> Device Management create a new D
 
 __pi.properties__
 
-the pi.properties file holds device specific parameters. To autoregister your device you need to provide the bootstrap_pwd this can be 
-obtained via the cumulocity support.
+the pi.properties file holds device specific parameters.
+* host -> Mqtt host (works for cumulocity.com do not change except you running on another instance of Cumulocity )
+* port -> Mqtt port it'll be set either to 1883 for tcp or to 8883 for  Transport Encryption via TLS
+* tls -> Boolean which indicates whether to use tls or not. Must match the port settings
+* cacert -> path to a certificate (pem format) that holds all trusted root certificates
+* operations -> all supported operations of the agent which are implemented in an agent module
+* subscribe -> Topics the agent will subscribe to.
+* deviceType -> speaks for itself
+* sendinterval -> Loop time of the RunAgent() function. Indicates in which time frame measurements etc. are read and send
+* requiredinterval -> Sets the time frame in which the device must contact the platform in order to be displayed connected. 
+* Loglevel -> speaks for itself
+* reboot -> will be set by the restart device command to prevent from a infinite loop.
+* config_update -> same as reboot
+* bootstrap_pwd -> needed for auto registration process
+*  
+
 
 ### Agent Run
 Checkout the project. For testing just run:  
@@ -85,10 +100,10 @@ python3 piAgent.py
  
 
 ### Agent Install
-The Agent supports a few operations like Reload Configuration / Save Configuration and Restart. In order to work these operatons need to perform a restart. This is done via a systemd service which has to be registered.
+The Agent supports a few operations like Reload Configuration / Save Configuration and Restart. In order to work these operators need to perform a restart. This is done via a systemd service which has to be registered.
 
 Execute sudo install.sh (You need to have write access to /opt).  
-A service called c8y will be registerd with systemd
+A service called c8y will be registered with systemd
 
 ### Build in functions
 

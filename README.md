@@ -32,7 +32,7 @@ The class C8yMQTT let's you connect your device to the Cumulocity Cloud using mq
 To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with device specific functionality (Send Measurements etc.). piAgent.py provides a sample implementation for the Raspberry PI 3.
 
 
-## Prerequisites for Raspian distribution
+## Prerequisites for Raspbian distribution
 
 #### Enable SPI Interface
 

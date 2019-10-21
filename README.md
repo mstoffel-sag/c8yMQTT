@@ -1,4 +1,4 @@
-# Cumulocity IoT Pyhton3 Agent
+# Cumulocity IoT Python3 Agent
 
 !!!DISCLAIMER!!! 
 This project is a demo implementation and has no intention to meet production standards. It's aim is to illustrate how a Cumulocity agent could be implemented in python.

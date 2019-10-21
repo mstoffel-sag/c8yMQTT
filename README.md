@@ -1,4 +1,4 @@
-# Cumulocity IoT Pyhton3 Agent
+# Cumulocity IoT Python3 Agent
 
 !!!DISCLAIMER!!! 
 This project is a demo implementation and has no intention to meet production standards. It's aim is to illustrate how a Cumulocity agent could be implemented in python.
@@ -32,7 +32,7 @@ The class C8yMQTT let's you connect your device to the Cumulocity Cloud using mq
 To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with device specific functionality (Send Measurements etc.). piAgent.py provides a sample implementation for the Raspberry PI 3.
 
 
-## Prerequisites for Raspian distribution
+## Prerequisites for Raspbian distribution
 
 #### Enable SPI Interface
 

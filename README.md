@@ -1,22 +1,26 @@
 # Cumulocity IoT Python3 Agent
 
-!!!DISCLAIMER!!! 
-This project is a demo implementation and has no intention to meet production standards. It's aim is to illustrate how a Cumulocity agent could be implemented in python.
+c8yMQTT is a Python3 Cumulocity Agent for MQTT and Rasperry PI. The Cumulocity Python agent is divided into two Python modules. C8yMQTT is sort of a small SDK that wraps a lot of functionality into function calls. piAgent.py Module leverages C8yMQTT.py to implement device specific functions such as sending measurements, updating configurations and more. 
 
-A cumulocity tenant to try out it can be provisioned as a trial at:
+To use this agent, you may sign up for free trial tenant at [Cumulocity](http://cumulocity.com/)
 
-http://cumulocity.com/ -> Try Cumulocity For Free
-
-For rapid prototyping Raspberry Pi including the SensHat Sensor Array is a very easy start to implement basic use cases.
+The Raspberry Pi including the SensHat Sensor Array is a great starting point for rapid prototyping.
 
 ![PI](pics/rpi.jpg)
 
-Cumulocity IoT enables companies to to quickly implement smart IoT solutions with little effort. 
+Cumulocity IoT enables companies to to quickly and easily implement smart IoT solutions. 
 
 ![Dashboard](pics/Dashboard.PNG)
 
-The Cumulocity python agent is deviceid into two python modules. C8yMQTT is sort of a small SDK that wraps a lot of functionality into function calls. piAgent.py Module leverages C8yMQTT.py to implement device specific functions like sending measurements, updateing configurations etc. 
+______________________
+For more information you can Ask a Question in the [TECHcommunity Forums](http://tech.forums.softwareag.com/techjforum/forums/list.page?product=webmethods-io-b2b).
 
+You can find additional information in the [Software AG TECHcommunity](http://techcommunity.softwareag.com/home/-/product/name/webmethods-io-b2b).
+______________________
+
+These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
+
+Contact us at [TECHcommunity](mailto:technologycommunity@softwareag.com?subject=Github/SoftwareAG) if you have any questions.
 
 ## C8yMQTT Class
 

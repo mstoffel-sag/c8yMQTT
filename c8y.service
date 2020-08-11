@@ -6,10 +6,8 @@ After=multi-user.target
 User=pi
 ExecStartPre=/bin/sleep 3
 Type=idle
-#WorkingDirectory=/home/pi/git/sag-d-iot.python_pi/c8yPyAgent
-WorkingDirectory=/opt/softwareag/c8yPyAgent
-
-ExecStart=/usr/bin/python3 /opt/softwareag/c8yPyAgent/piAgent.py
+WorkingDirectory=/home/pi/git/c8yMQTT
+ExecStart=/usr/bin/python3 /home/pi/git/c8yMQTT/piAgent.py
 
 [Install]
 WantedBy=multi-user.target

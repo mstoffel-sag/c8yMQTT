@@ -1,5 +1,3 @@
 paho-mqtt
 psutil
-lxml
-Flask
 websocket_client

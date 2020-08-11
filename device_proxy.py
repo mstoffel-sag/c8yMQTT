@@ -17,11 +17,13 @@ from c8yMQTT import C8yMQTT
 import time
 import io
 import psutil
-from sense_hat import SenseHat
-
+from flask import Flask
+from flask import request
+import socket
+import json
+import device_proxy
 
 #import restServer
-sense = SenseHat()
 startUp = False
 stopEvent = threading.Event()
 config_file = 'pi.properties'
@@ -31,6 +33,7 @@ reset = 0
 resetMax = 3
 
 
+fetchEventQueue = queue.Queue(maxsize=100)
 
 c8y = C8yMQTT(config.get('device','host'),
                int(config.get('device','port')),
@@ -38,42 +41,8 @@ c8y = C8yMQTT(config.get('device','host'),
                config.get('device','cacert'),
                loglevel=logging.getLevelName(config.get('device', 'loglevel')))
 
-def sendTemperature():
-    tempString = "211," + str(sense.get_temperature())
-    c8y.logger.debug("Sending Temperature  measurement: " + tempString)
-    c8y.publish("s/us", tempString)
 
-
-def sendHumidity():
-    tempString = "992,," + str(sense.get_humidity())
-    c8y.logger.debug("Sending Humidity  measurement: " + tempString)
-    c8y.publish("s/uc/pi", tempString)
-
-
-def sendPressure():
-    tempString = "994,," + str(sense.get_pressure())
-    c8y.logger.debug("Sending Pressure  measurement: " + tempString)
-    c8y.publish("s/uc/pi", tempString)
-
-
-def sendAcceleration():
-    acceleration = sense.get_accelerometer_raw()
-    x = acceleration['x']
-    y = acceleration['y']
-    z = acceleration['z']
-    accString = "991,," + str(x) + "," + str(y) + "," + str(z)
-    c8y.logger.debug("Sending Acceleration measurement: " + accString)
-    c8y.publish("s/uc/pi", accString)
-
-
-def sendGyroscope():
-    o = sense.get_orientation()
-    pitch = o["pitch"]
-    roll = o["roll"]
-    yaw = o["yaw"]
-    gyString = "993,," + str(pitch) + "," + str(roll) + "," + str(yaw)
-    c8y.logger.debug("Sending Gyroscope measurement: " + gyString)
-    c8y.publish("s/uc/pi", gyString)
+  
 
 def sendConfiguration():
     with open(config_file, 'r') as configFile:
@@ -83,18 +52,7 @@ def sendConfiguration():
     c8y.publish("s/us",configString)
 
 def getserial():
-    # Extract serial from cpuinfo file
-    cpuserial = "0000000000000000"
-    try:
-        f = open('/proc/cpuinfo', 'r')
-        for line in f:
-            if line[0:6] == 'Serial':
-                cpuserial = line[10:26]
-        f.close()
-    except:
-        cpuserial = "ERROR000000000"
-    c8y.logger.debug('Found Serial: ' + cpuserial)
-    return cpuserial
+    return socket.gethostname()
 
 def getrevision():
     # Extract board revision from cpuinfo file
@@ -138,59 +96,46 @@ def sendMemory():
     c8y.publish("s/uc/pi", tempString)
 
 
-def listenForJoystick():
-    for event in sense.stick.get_events():
-        c8y.logger.debug("The joystick was {} {}".format(event.action, event.direction))
-        c8y.publish("s/us", "400,c8y_Joystick,{} {}".format(event.action, event.direction))
-        if event.action == 'pressed' and event.direction == 'middle':
-            global reset
-            global resetMax
-            reset += 1
-            if reset >= resetMax:
-                stopEvent.set()
-                c8y.logger.info('Resetting c8y.properties initializing re-register device....')
-                c8y.reset()
-                runAgent()
-
-
 def sendMeasurements(stopEvent, interval):
+    c8y.logger.info('Starting sendMeasurement with interval: '+ str(interval))
     try:
+        sendCPULoad()
+        sendMemory()
+        c8y.logger.info('sendMeasurements called')
         while not stopEvent.wait(interval):
-            listenForJoystick()
-            sendTemperature()
-            sendAcceleration()
-            sendHumidity()
-            sendPressure()
-            sendGyroscope()
+            sendCPULoad()
+            sendMemory()
+            c8y.logger.info('sendMeasurements called')
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
         c8y.logger.info('Exiting sendMeasurement...')
         sys.exit()
-# Can be used  to reset existing operations.
-def on_message_startup(client, obj, msg):
-    message = msg.payload.decode('utf-8')
-    c8y.logger.info("On_Message_Startup Received: " + msg.topic + " " + str(msg.qos) + " " + message)
-
 
 def on_message_default(client, obj, msg):
     message = msg.payload.decode('utf-8')
     c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
-    if message.startswith('1001'):
-        setCommandExecuting('c8y_Message')
-        messageArray =  shlex.shlex(message, posix=True)
-        messageArray.whitespace =',' 
-        messageArray.whitespace_split =True 
-        sense.show_message(list(messageArray)[-1])
-        sense.clear
-        setCommandSuccessfull('c8y_Message')
+
     if message.startswith('510'):
         Thread(target=restart).start()
     if message.startswith('513'):
-        updateConfig(message)
+        Thread(target=updateConfig,args=(message,)).start()
     if message.startswith('520'):
-        c8y.logger.info('Received Config Upload. Sending config')
-        sendConfiguration() 
-    
+       c8y.logger.info('Received Config Upload. Sending config')
+       sendConfiguration()
+       setCommandExecuting('c8y_SendConfiguration')
+       setCommandSuccessfull('c8y_SendConfiguration')
+    if message.startswith('1003'):
+        fields = message.split(",")
+        tcp_host = fields[2]
+        tcp_port = int(fields[3])
+        connection_key = fields[4]
+        c8y.logger.info('Received Remote Connect.')
+        c8y.remoteConnect(tcp_host,tcp_port,connection_key,config.get('device','host'))
+
+
+def on_message_startup(client, obj, msg):
+    message = msg.payload.decode('utf-8')
+    c8y.logger.info("On_Message_Startup Received: " + msg.topic + " " + str(msg.qos) + " " + message)
 
 
 
@@ -214,7 +159,7 @@ def restart():
             with open(config_file, 'w') as configfile:
                 config.write(configfile)
             c8y.disconnect()
-            os.system('sudo reboot')
+            os.system('sudo service c8y restart')
         else:
             c8y.logger.info('Received Reboot but already in progress')
 
@@ -260,12 +205,20 @@ def runAgent():
         c8y.logger.info('Could not register. Exiting.')
         exit()
     ## Connect Startup
-    c8y.connect(on_message_startup,config.get('device', 'subscribe'))
-    time.sleep(2)
+    connected = c8y.connect(on_message_startup,config.get('device', 'subscribe'))
+    c8y.logger.info('Connection Result:' + str(connected))
+    if connected == 5:
+        c8y.reset()
+        c8y.logger.info('No Bootstrap needed. Restarting Service')
+        os.system('sudo service c8y restart')
+    if not connected == 0:
+        c8y.logger.info('Could not connect Restarting Service')
+        os.system('sudo service c8y restart')
+
+
     c8y.logger.info('Request Old Operations')
-    # This wil get you all pending operations. Proceed in on_message_startup....
-    c8y.publish('s/us','500')
-    time.sleep(1)
+    ## Enable to cleanup old operations in executing
+    # c8y.publish('s/us','500')
 
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
     if config.get('device','reboot') == '1':
@@ -281,9 +234,9 @@ def runAgent():
         with open(config_file, 'w') as configfile:
             config.write(configfile)
     sendConfiguration()
-    time.sleep(2)
+    time.sleep(1)
     c8y.disconnect()
-    time.sleep(2)
+    time.sleep(1)
     c8y.connect(on_message_default,config.get('device', 'subscribe'))
 
 
@@ -292,7 +245,7 @@ runAgent()
 c8y.logger.info('Starting sendMeasurements.')
 sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))
 sendThread.start()
-
+c8y.logger.info('Agent Started')
 
 
 

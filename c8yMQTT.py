@@ -10,6 +10,7 @@ import os, time, threading, ssl
 import sys
 import re
 import paho.mqtt.client as mqtt
+from device_proxy import DeviceProxy 
 
 
 class C8yMQTT(object):
@@ -21,7 +22,13 @@ class C8yMQTT(object):
     if c8y.initialized == False:
       c8y.registerDevice("testdevice", "Test device", "c8y_TestDevice", "serialNumberTest", "Meine Hardware Nummer", "reversion 1234","c8y_Restart,c8y_Message")
     '''
-    
+    def readConfig(self):
+        self.config.read(self.configFile)
+        self.tenant= self.config.get('credentials', 'tenant')
+        self.user= self.config.get('credentials', 'user')
+        self.clientId= self.config.get('credentials', 'clientid')
+        self.password= self.config.get('credentials', 'password')
+        #self.logger = logging.getLogger('readConfig')
     
     def __init__(self,mqtthost,mqttport, tls , cacert,loglevel=logging.INFO):
         '''
@@ -29,6 +36,9 @@ class C8yMQTT(object):
         Connect to configured tenant
         do device onboarding if not already registered
         '''
+        self.ackpub = -1
+        self.lastpub = -1
+        self.connected = -1
         self.logger = logging.getLogger('C8yAgent')
         self.logger.setLevel(loglevel)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
@@ -41,7 +51,7 @@ class C8yMQTT(object):
         self.logger.addHandler(self.logHandlerStOut)
         self.logger.addHandler(self.logHandler)
         
-        
+        self.topic_ack=[]
         self.config = RawConfigParser()
         self.configFile = 'c8y.properties'
         self.mqtthost = mqtthost
@@ -49,17 +59,15 @@ class C8yMQTT(object):
         self.cacert = cacert
         self.tls = tls
         
+        self.token = None
+        
         if not os.path.exists(self.configFile):
             self.initialized = False
             self.logger.error('Config file does not exist, please call registerDevice() of edit Config: '+ self.configFile)
             return 
 
 
-        self.config.read(self.configFile)
-        self.tenant= self.config.get('credentials', 'tenant')
-        self.user= self.config.get('credentials', 'user')
-        self.clientId= self.config.get('credentials', 'clientid')
-        self.password= self.config.get('credentials', 'password')
+        self.readConfig()
         
         if self.password == '' or self.user == '' or self.tenant == '' or self.clientId == '':
             self.logger.error('Coould not  initialize Agent. Missing Values in c8y.properties')
@@ -67,27 +75,84 @@ class C8yMQTT(object):
         else:
             self.logger.info('Successfully initialized.')
             self.initialized = True
-            
-    def on_connect(self,client, userdata, flags, rc):
-        self.logger.debug("connect result: " + str(rc))
-        if rc==0:
-            self.connected=True
-            self.logger.debug('!!Connected!!')
-        else:
-            self.logger.debug('!!Connection Error!!')
 
+    def on_connect(self,client, userdata, flags, rc):
+        self.logger.info("on_connect result: " + str(rc))
+        self.connected=rc
+   
+
+    def check_subs(self):
+        wcount=0
+        while wcount<10: #wait loop
+            self.logger.info('Check Subtopic_ack:' +str(self.topic_ack))
+            if len(self.topic_ack)==0:
+                self.logger.info('Successfuly Subscribed')
+                return True
+            time.sleep(1)
+            wcount+=1
+        return False
+
+    def publish(self,topic,payload,qos=1):
+        ret=self.client.publish(topic,payload,qos)
+        self.logger.debug('publish ret:' + str(ret))
+        return ret
+        # self.lastpub = ret[1]
+        # maxtry
+        # count = 0
+        # while self.lastpub != self.ackpub:
+        #     count += count
+        # return True
 
     def on_publish(self,client, obj, mid):
         self.logger.debug("publish: " + str(mid))
+        self.ackpub = mid
+
+    def subscribe_topics(self,topics,qos=0):
+        self.topic_ack = []
+        topics = topics.split(',')
+        self.logger.info("topics to subscribe: " +str(topics))
+   
+        for t in topics:
+            try:
+                self.logger.debug("Subscribing to topic "+str(t)+" qos: " + str(qos))
+                r=self.client.subscribe(t,qos)
+                if r[0]==0:
+                    self.logger.debug("subscribed to topic "+str(t)+" return code" +str(r) + 'r[1] ' + str(r[1]))
+                    self.topic_ack.append(r[1]) #keep track of subscription
+                else:
+                    self.logger.error("error on subscribing: " + t + ' return code:'+str(r))
+
+            except Exception as e:
+                self.logger.error("Exception on subscribe"+str(e))
+
+
 
     def on_subscribe(self,client, obj, mid, granted_qos):
-        self.logger.debug("Subscribed: " + str(mid) + " " + str(granted_qos))
+        
+        """removes mid valuse from subscribe list"""
+        if len(self.topic_ack)==0:
+            self.logger.info('Sucessfully  Subscribed')
+            return
+        for index,t in enumerate(self.topic_ack):
+            #self.logger.info('Index: ' + str(index) + ' t:' + str(t) + ' mid:' +str(mid))
+            if t==mid:
+             #   self.logger.info('Removing sub ' + str(mid))
+                self.topic_ack.pop(index)#remove it
 
     def on_log(self,client, obj, level, string):
-        self.logger.debug("Log: " +string)
+        self.logger.debug("on_log: " +string)
     
+    def on_disconnect(self,client, userdata, rc):
+        self.logger.debug("on_disconnect rc: " +str(rc))
+        if rc==5:
+            self.logger.error("Disconnected! Wrong Credentials: " +str(rc))
+            return
+        if rc!=0:
+            self.logger.error("Disconnected! Try to reconnect: " +str(rc))
+            self.client.reconnect()
+
     def connect(self,on_message,topics):
-        self.connected=False
+        self.connected=-1
         ''' Will connect to the mqtt broker
             
             Keyword Arguments:
@@ -95,9 +160,9 @@ class C8yMQTT(object):
             topics -- a list of topics strings like s/ds to subscribe to
         
         ''' 
-        if self.initialized == False:
-            self.logger.error('Not initialized, please call registerDevice() of edit c8y.properties file')
-            return
+        # if self.initialized == False:
+        #     self.logger.error('Not initialized, please call registerDevice() of edit c8y.properties file')
+        #     return
         self.client = mqtt.Client(client_id=self.clientId)
         if self.tls:
             self.client.tls_set(self.cacert) 
@@ -105,26 +170,25 @@ class C8yMQTT(object):
         self.client.on_message = on_message
         self.client.on_publish = self.on_publish
         self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
         self.client.on_subscribe = self.on_subscribe
         self.client.on_log = self.on_log
-        self.client.connect(self.mqtthost, self.mqttport)
-        count=0
-        while self.connected==False and  count < 50: 
-            time.sleep(.2)
-            count+=1
-        if self.connected!=False:
-            self.logger.error('Could not connect to the MQTT Broker.')
-            return False
-        else:
-            self.client.loop_start()
-            for t in topics:
-                self.client.subscribe(t, 2)
-                self.logger.debug('Subscribing to topic: ' + t)
-            time.sleep(5)
-            self.logger.info('Connected and subscribed successfully.')
-            return True
-        
-
+        self.logger.debug('Creds: ' + self.tenant + '/' + self.user + ' pwd: ' + self.password )
+        self.logger.info('Connecting to: ' + self.mqtthost + ':' + str(self.mqttport) )
+        self.client.loop_start()
+        self.client.connect(self.mqtthost, self.mqttport,keepalive=60)
+        while self.connected == -1:
+            self.logger.debug('Waiting for Connect.' + str(self.connected))
+            time.sleep(2)
+        self.logger.debug('After Waiting for Connect.' + str(self.connected))
+        if not self.connected == 0:
+            self.logger.debug('Connect not successfull return to client. Code:' + str(self.connected))
+            return self.connected
+        self.subscribe_topics(topics)
+        if not self.check_subs():
+            self.logger.error("Could not subscribe to: " + topics)
+            return 17
+        return self.connected
 
     def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval,bootstrap_password):
         
@@ -151,49 +215,45 @@ class C8yMQTT(object):
         self.reversion = reversion
         self.requiredInterval = requiredInterval
         self.operationString = operationString
-        
-        self.client = mqtt.Client(client_id=self.clientId)
-        self.client.username_pw_set('management/devicebootstrap', bootstrap_password)
-        self.client.on_message = self.__on_messageRegistration
-        self.client.on_publish = self.on_publish
-        self.client.on_connect = self.on_connect
-        self.client.on_subscribe = self.on_subscribe
-        self.client.on_log = self.on_log
-        if self.tls:
-            self.client.tls_set(self.cacert)
-        self.client.connect(self.mqtthost, self.mqttport)
-        self.client.loop_start()
-        self.client.subscribe("s/dcr")
-        self.client.subscribe("s/e")
-        
+
+        self.user ='devicebootstrap' 
+        self.password = bootstrap_password
+        self.tenant = 'management'
+
+        self.connect(self.__on_messageRegistration,'s/dcr,s/e')
         while True:
             if self.initialized == False:
+                self.logger.info('Waiting for Credentials')
                 self.client.publish("s/ucr", "", 2)
-                time.sleep(5)
+                time.sleep(2)
             else:
-                self.initialized = True
+                self.logger.info('Credentials Received')
                 break
         self.disconnect()
             
         if self.initialized == False:
             self.logger.error( 'Could not register device. Exiting')
             exit
-            
-        self.logger.debug( 'Reconnection with received creds')
+        
+        self.logger.info( 'Reconnection with received creds')
+        self.readConfig()
         self.client.username_pw_set(self.tenant+'/'+self.user,self.password)
-        self.client.connect(self.mqtthost, self.mqttport)
-        self.client.loop_start()
+        self.connect(self.__on_message_createdevice,'s/e')
+        self.logger.info( 'Creating Device')
         self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2)
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         self.client.publish("s/us", "114,"+ self.operationString,2)
-        self.logger.debug( 'Stop Loop')
+        self.logger.info( 'Device created')
+        time.sleep(2)
+        self.initialized = True
+        self.disconnect()
+            
+        if self.initialized == False:
+            self.logger.error( 'Could not register device. Exiting')
+            exit
         self.disconnect()
 
-
-    def publish(self,topic,payload):
-        self.client.publish(topic,payload,2)
-        
     def reset(self):
         self.initialized = False
         self.logger.info('reseting')
@@ -207,14 +267,15 @@ class C8yMQTT(object):
             self.logger.debug('config file already missing')
 
     def disconnect(self):
-        time.sleep(10)
+
+        self.logger.info('Disconnect')
         self.client.disconnect()
         self.client.loop_stop()
         self.connected=False
 
     def __on_messageRegistration(self,client,userdata,message):
         message = message.payload.decode('utf-8')
-        self.logger.debug("Received Registration Message: " + message)
+        self.logger.info("Received Registration Message: " + message)
         if (message.startswith("70")):
             self.logger.info("Got Device Credentials")
             messageArray = message.split(',')
@@ -228,8 +289,13 @@ class C8yMQTT(object):
             self.config.set('credentials', 'password', self.password)
             self.config.set('credentials', 'clientid', self.clientId)
             self.config.write(open(self.configFile, 'w'))
-            self.logger.debug('Config file written:')
+            self.logger.info('Config file written:')
             self.initialized = True
+
+    def __on_message_createdevice(self,client,userdata,message):
+        message = message.payload.decode('utf-8')
+        self.logger.info("__on_message_createdevice Received Registration Message: " + message)
+
             
     def __getPassword(self,text,maxcount):
         pos=0
@@ -252,6 +318,12 @@ class C8yMQTT(object):
         payload = message[pos[1]+1:]
         self.logger.debug('Payload: '+payload )
         return payload
+    
+    def remoteConnect( self,tcp_host,tcp_port,connection_key,base_url):
+        if self.initialized:
+            devProx = DeviceProxy( tcp_host,tcp_port,connection_key,base_url, self.tenant,self.user,self.password,self.token)
+            devProx.connect()
+
 
         
         

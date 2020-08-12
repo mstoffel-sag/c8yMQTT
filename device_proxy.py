@@ -1,253 +1,231 @@
-#!/usr/bin/python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-'''
-Created on 19.12.2017
-
-@author: mstoffel
-'''
-
-from configparser import RawConfigParser
+"""
+Device Proxy Module which tunnels a TCP Socket through WebSocket to a C8Y Tenant.
+Raises:
+    WebSocketFailureException: Is raised when something is wrong with the Web Socket Connection
+    TCPSocketFailureException: Is raised when something is wrong with the TCP Connection
+"""
 import logging
-import sys
-import os
-from threading import Thread
-import threading
-import shlex
-from c8yMQTT import C8yMQTT
-import time
-import io
-import psutil
-from flask import Flask
-from flask import request
 import socket
-import json
-import device_proxy
+import threading
+from base64 import b64encode
+from socket import SHUT_RDWR
 
-#import restServer
-startUp = False
-stopEvent = threading.Event()
-config_file = 'pi.properties'
-config = RawConfigParser()
-config.read(config_file)
-reset = 0
-resetMax = 3
+import websocket
 
 
-fetchEventQueue = queue.Queue(maxsize=100)
-
-c8y = C8yMQTT(config.get('device','host'),
-               int(config.get('device','port')),
-               config.getboolean('device','tls'),
-               config.get('device','cacert'),
-               loglevel=logging.getLevelName(config.get('device', 'loglevel')))
+class WebSocketFailureException(Exception):
+    """WS Failure error"""
 
 
-  
-
-def sendConfiguration():
-    with open(config_file, 'r') as configFile:
-            configString=configFile.read()
-    configString = '113,"' + configString + '"'
-    c8y.logger.debug('Sending Config String:' + configString)
-    c8y.publish("s/us",configString)
-
-def getserial():
-    return socket.gethostname()
-
-def getrevision():
-    # Extract board revision from cpuinfo file
-    myrevision = "0000"
-    try:
-        f = open('/proc/cpuinfo','r')
-        for line in f:
-            if line[0:8]=='Revision':
-                length=len(line)
-                myrevision = line[11:length-1]
-        f.close()
-    except:
-        myrevision = "ERROR0000"
-    c8y.logger.debug('Found HW Version: ' + myrevision)
-    return myrevision
-
-def gethardware():
-    # Extract board revision from cpuinfo file
-    myrevision = "0000"
-    try:
-        f = open('/proc/cpuinfo','r')
-        for line in f:
-            if line[0:8]=='Hardware':
-                length=len(line)
-                myrevision = line[11:length-1]
-        f.close()
-    except:
-        myrevision = "ERROR0000"
-    c8y.logger.debug('Found Hardware: ' + myrevision)
-    return myrevision
-
-       
-def sendCPULoad():
-    tempString = "995,," + str(psutil.cpu_percent())
-    c8y.logger.debug("Sending CPULoad: " + tempString)
-    c8y.publish("s/uc/pi", tempString)
-
-def sendMemory():
-    tempString = "996,," +  str(psutil.virtual_memory().total >> 20) + "," + str(psutil.virtual_memory().available >> 20) + "," + str(psutil.swap_memory().total >> 20)
-    c8y.logger.debug("Sending Memory: " + tempString)
-    c8y.publish("s/uc/pi", tempString)
+class TCPSocketFailureException(Exception):
+    """TCP Socket Failure error"""
 
 
-def sendMeasurements(stopEvent, interval):
-    c8y.logger.info('Starting sendMeasurement with interval: '+ str(interval))
-    try:
-        sendCPULoad()
-        sendMemory()
-        c8y.logger.info('sendMeasurements called')
-        while not stopEvent.wait(interval):
-            sendCPULoad()
-            sendMemory()
-            c8y.logger.info('sendMeasurements called')
-        c8y.logger.info('sendMeasurement was stopped..')
-    except (KeyboardInterrupt, SystemExit):
-        c8y.logger.info('Exiting sendMeasurement...')
-        sys.exit()
+class DeviceProxy:
+    """ Main Proxy Class for tunneling TCP with WebSocket
 
-def on_message_default(client, obj, msg):
-    message = msg.payload.decode('utf-8')
-    c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
+        Args:
+            tcp_host (string): Local TCP Host to connect to
+            tcp_port (int): Local TCP Port to connect to
+            connection_key (string): The connection Key provided by Cumulocity to establish a Web Socket connection
+            base_url (string): The Base URL of the C8Y Instance the Web Socket should connect to
+            tenant (string): The C8Y TenantId, required when token in None
+            user (string): The C8Y user, required when token is None
+            password (string): The C8Y Device Password, required when token is None
+            token (string): The OAuth Token used to authenticate when tenant + user + password are not provided
+    """
 
-    if message.startswith('510'):
-        Thread(target=restart).start()
-    if message.startswith('513'):
-        Thread(target=updateConfig,args=(message,)).start()
-    if message.startswith('520'):
-       c8y.logger.info('Received Config Upload. Sending config')
-       sendConfiguration()
-       setCommandExecuting('c8y_SendConfiguration')
-       setCommandSuccessfull('c8y_SendConfiguration')
-    if message.startswith('1003'):
-        fields = message.split(",")
-        tcp_host = fields[2]
-        tcp_port = int(fields[3])
-        connection_key = fields[4]
-        c8y.logger.info('Received Remote Connect.')
-        c8y.remoteConnect(tcp_host,tcp_port,connection_key,config.get('device','host'))
+    def __init__(self, tcp_host: str,
+                 tcp_port: int,
+                 connection_key: str,
+                 base_url: str,
+                 tenant: str,
+                 user: str,
+                 password: str,
+                 token: str):
+        self.tcp_host = tcp_host
+        self.tcp_port = tcp_port
+        self.connection_key = connection_key
+        self.base_url = base_url
+        self.tenant = tenant
+        self.user = user
+        self.password = password
+        self.token = token
+        # Not sure which buffer size is good, starting with 16 KB (16 x 1024)
+        self._buffer_size = 16*1024
+        self._close = False
+        self._websocket_device_endpoint = '/service/remoteaccess/device/'
+        self._web_socket = None
+        self._tcp_socket = None
+        self._ws_open = False
+        self._ws_open_event = None
+        self._tcp_open_event = None
+        self._ws_timeout = 20
+        self._tcp_timeout = 10
+        #self._ws_buffer_queue = queue.Queue(maxsize=100)
 
+    def connect(self):
+        """Establishes the connection to Web Socket and TCP Port in this order
 
-def on_message_startup(client, obj, msg):
-    message = msg.payload.decode('utf-8')
-    c8y.logger.info("On_Message_Startup Received: " + msg.topic + " " + str(msg.qos) + " " + message)
+        Raises:
+            WebSocketFailureException: Is raised when something is wrong with the Web Socket Connection
+            Exception: Any other exception happening during execution
+        """
+        # They are needed to wait for succesful connections
+        self._ws_open_event = threading.Event()
+        self._tcp_open_event = threading.Event()
+        try:
+            self._websocket_connect(self.connection_key)
+        except Exception as ex:
+            logging.error(f'Error on Web Socket Connect: {ex}')
+            self.stop()
+            raise
+        ws_result = self._ws_open_event.wait(timeout=self._ws_timeout)
+        # WebSocket Connection is not successful
+        if ws_result is False:
+            raise WebSocketFailureException(
+                'No WebSocket Connection could be established in time.')
+        # Establish TCP Socket Connection
+        try:
+            self._tcp_port_connect(self.tcp_host, self.tcp_port)
+        except Exception as ex:
+            logging.error(f'Error on TCP Socket Connect: {ex}')
+            # This is a dummy command to let the Web Socket Thread trigger the stop command!
+            # If we would just do self.stop() the Web Socket Thread and event Threads are not properly removed sometimes
+            if self._web_socket.sock is not None and self._ws_open:
+                self._web_socket.send('Shutdown')
+            else:
+                self.stop()
+            raise
 
+    def stop(self):
+        """ Disconnecting all Connections and clear up objects """
+        logging.info('Stopping TCP Socket and WebSocket Connections...')
+        # Stopping Loop
+        self._close = True
+        # Shutdown TCP Socket
+        if self._tcp_socket is not None:
+            self._tcp_socket.shutdown(SHUT_RDWR)
+            self._tcp_socket.close()
+        # Closing WebSocket
+        if self._web_socket is not None:
+            self._web_socket.keep_running = False
+            self._web_socket.close()
+        self._web_socket = None
+        self._tcp_socket = None
+        self._ws_open = False
+        logging.info('TCP Socket and WebSocket Connections stopped!')
 
+    def _start_tcp_loop(self):
+        try:
+            # This is the TCP Loop looking for Data and forwarding it to Web Socket
+            while not self._close:
+                #ws_message = self._ws_buffer_queue.get()
+                data = self._tcp_socket.recv(self._buffer_size)
+                # If no data received anymore consider this loop as completed!
+                if not data:
+                    raise TCPSocketFailureException(
+                        'No data received anymore from TCP-Socket. Consider TCP-Socket as closed.')
+                logging.debug(f'Received data from TCP Socket: {data}')
+                if self._web_socket.sock is not None:
+                    self._web_socket.sock.send_binary(data)
+        except Exception as ex:
+            if not self._close:
+                logging.error(f'Error in TCP Loop. Exception={ex}')
+                # This is a dummy command to let the Web Socket Thread trigger the stop command!
+                # If we would just do self.stop() the Web Socket Thread and event Threads are not properly removed sometimes
+                if self._web_socket.sock is not None and self._ws_open:
+                    self._web_socket.send('Shutdown')
+                else:
+                    self.stop()
 
-def setCommandExecuting(command):
-    c8y.logger.info('Setting command: '+ command + ' to executing')
-    c8y.publish('s/us','501,'+command)
+    def _tcp_port_connect(self, host, port):
+        logging.info(f'Connecting to TCP Host {host} with Port {port} ...')
+        tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_socket.connect((host, port))
+        self._tcp_socket = tcp_socket
+        logging.info(
+            f'Connected to TCP Host {host} with Port {port} successfully.')
+        # Start TCP Loop receiving Data
+        tcpt = threading.Thread(target=self._start_tcp_loop)
+        tcpt.daemon = True
+        tcpt.name = 'TCP-Socket-Tunnel-Thread'
+        tcpt.start()
+        self._tcp_open_event.set()
 
-def setCommandSuccessfull(command):
-    c8y.logger.info('Setting command: '+ command + ' to successful')
-    c8y.publish('s/us','503,'+command)
+    def _is_tcp_socket_available(self) -> bool:
+        if self._tcp_socket is not None:
+            return True
+        tcp_result = self._tcp_open_event.wait(timeout=self._tcp_timeout)
+        return tcp_result
 
-def setCommandFailed(command,errorMessage):
-    c8y.logger.info('Setting command: '+ command + ' to failed cause: ' +errorMessage)
-    c8y.publish('s/us','502,'+command+','+errorMessage)
+    def _on_ws_message(self, _ws, message):
+        try:
+            logging.debug(f'WebSocket Message received: {message}')
+            #self._ws_buffer_queue.put(message)
+            if self._is_tcp_socket_available():
+                logging.debug(f'Sending to TCP Socket: {message}')
+                if self._tcp_socket is not None:
+                    self._tcp_socket.send(message)
+        except Exception as ex:
+            logging.error(
+                f'Error on handling WebSocket Message {message}: {ex}')
+            self.stop()
 
-def restart():
-        if config.get('device','reboot') != '1':
-            c8y.logger.info('Rebooting')
-            c8y.publish('s/us','501,c8y_Restart')
-            config.set('device','reboot','1')
-            with open(config_file, 'w') as configfile:
-                config.write(configfile)
-            c8y.disconnect()
-            os.system('sudo service c8y restart')
+    def _on_ws_error(self, _ws, error):
+        logging.error(f'WebSocket Error received: {error}')
+
+    def _on_ws_close(self, _ws):
+        logging.info(f'WebSocket Connection closed!')
+        self.stop()
+
+    def _on_ws_open(self, _ws):
+        logging.info(f'WebSocket Connection opened!')
+        self._ws_open = True
+        self._ws_open_event.set()
+
+    def _websocket_connect(self, connection_key):
+        """Connecting to the CRA WebSocket
+
+        Args:
+            connection_key (string): Delivered by the Operation
+
+        Raises:
+            WebSocketFailureException: Is raised when something is wrong with the Web Socket Connection
+        """
+
+        if not self.base_url.startswith('http'):
+            self.base_url = f'https://{self.base_url}'
+        base_url = self.base_url.replace(
+            'https', 'wss').replace('http', 'ws')
+        headers = None
+
+        if self.token:
+            # Use Device Certificates
+            headers = f'Authorization: Bearer {self.token}'
+        elif self.tenant and self.user and self.password:
+            # Use Device Credentials
+            auth_string = f'{self.tenant}/{self.user}:{self.password}'
+            encoded_auth_string = b64encode(
+                bytes(auth_string, 'utf-8')).decode('ascii')
+            headers = f'Authorization: Basic {encoded_auth_string}'
         else:
-            c8y.logger.info('Received Reboot but already in progress')
+            raise WebSocketFailureException('OAuth Token or tenant, user and password must be provided!')
 
-def updateConfig(message):
-        
-        c8y.logger.info('UpdateConfig')
-        if config.get('device','config_update') != '1':
-            plain_message = c8y.getPayload(message).strip('\"')
-            with open(config_file, 'w') as configFile:
-                config.readfp(io.StringIO(plain_message))
-                c8y.logger.info('Current config:' + str(config.sections()))
-                config.set('device','config_update','1')
-                config.write(configFile)
-            c8y.logger.info('Sending Config Update executing')
-            setCommandExecuting('c8y_Configuration')
-            c8y.disconnect()
-            c8y.logger.info('Restarting Service')
-            os.system('sudo service c8y restart')
-        else:
-            c8y.logger.info('Received Config Update but already in progress')
+        url = f'{base_url}{self._websocket_device_endpoint}{connection_key}'
+        logging.info(f'Connecting to WebSocket with URL {url} ...')
 
-
-def runAgent():
-    # Enter Device specific values
-    stopEvent.clear()
-
-    global reset
-
-    reset=0
-    if c8y.initialized == False:
-        serial = getserial()
-        c8y.logger.info('Not initialized. Try to registering Device with serial: '+ serial)
-        c8y.registerDevice(serial,
-                           serial,
-                           config.get('device','devicetype'),
-                           getserial(),
-                           gethardware(),
-                           getrevision(),
-                           config.get('device','operations'),
-                           config.get('device','requiredinterval'),
-                           config.get('device','bootstrap_pwd'))
-    if c8y.initialized == False:
-        c8y.logger.info('Could not register. Exiting.')
-        exit()
-    ## Connect Startup
-    connected = c8y.connect(on_message_startup,config.get('device', 'subscribe'))
-    c8y.logger.info('Connection Result:' + str(connected))
-    if connected == 5:
-        c8y.reset()
-        c8y.logger.info('No Bootstrap needed. Restarting Service')
-        os.system('sudo service c8y restart')
-    if not connected == 0:
-        c8y.logger.info('Could not connect Restarting Service')
-        os.system('sudo service c8y restart')
-
-
-    c8y.logger.info('Request Old Operations')
-    ## Enable to cleanup old operations in executing
-    # c8y.publish('s/us','500')
-
-    c8y.publish("s/us", "114,"+ config.get('device','operations'))
-    if config.get('device','reboot') == '1':
-        c8y.logger.info('reboot is active. Publishing Acknowledgement..')
-        setCommandSuccessfull('c8y_Restart')
-        config.set('device','reboot','0')
-        with open(config_file, 'w') as configfile:
-            config.write(configfile)
-    if config.get('device','config_update') == '1':
-        c8y.logger.info('Config Update is active. Publishing Acknowledgement..')
-        setCommandSuccessfull('c8y_Configuration')
-        config.set('device','config_update','0')
-        with open(config_file, 'w') as configfile:
-            config.write(configfile)
-    sendConfiguration()
-    time.sleep(1)
-    c8y.disconnect()
-    time.sleep(1)
-    c8y.connect(on_message_default,config.get('device', 'subscribe'))
-
-
-
-runAgent()
-c8y.logger.info('Starting sendMeasurements.')
-sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))
-sendThread.start()
-c8y.logger.info('Agent Started')
-
-
-
-
-
+        # websocket.enableTrace(True) # Enable this for Debug Purpose only
+        web_socket = websocket.WebSocketApp(url, header=[headers])
+        # pylint: disable=unnecessary-lambda
+        web_socket.on_message = lambda ws, msg: self._on_ws_message(ws, msg)
+        web_socket.on_error = lambda ws, error: self._on_ws_error(ws, error)
+        web_socket.on_close = lambda ws: self._on_ws_close(ws)
+        web_socket.on_open = lambda ws: self._on_ws_open(ws)
+        logging.info(f'Starting Web Socket Connection...')
+        self._web_socket = web_socket
+        wst = threading.Thread(target=self._web_socket.run_forever, kwargs={
+            'ping_interval': 10, 'ping_timeout': 7})
+        wst.daemon = True
+        wst.name = 'WS-Tunnel-Thread'
+        wst.start()

@@ -11,6 +11,7 @@ import sys
 import re
 import paho.mqtt.client as mqtt
 from device_proxy import DeviceProxy 
+import smartrest
 
 
 class C8yMQTT(object):
@@ -61,6 +62,8 @@ class C8yMQTT(object):
         
         self.token = None
         
+        self.templates = smartrest.templates
+
         if not os.path.exists(self.configFile):
             self.initialized = False
             self.logger.error('Config file does not exist, please call registerDevice() of edit Config: '+ self.configFile)
@@ -244,6 +247,8 @@ class C8yMQTT(object):
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         self.client.publish("s/us", "114,"+ self.operationString,2)
+        
+
         self.logger.info( 'Device created')
         time.sleep(2)
         self.initialized = True
@@ -253,6 +258,11 @@ class C8yMQTT(object):
             self.logger.error( 'Could not register device. Exiting')
             exit
         self.disconnect()
+
+    def createSmartRestTemplates(self):
+        self.logger.info("Creating SmartResetTemplates.")
+        self.client.publish(smartrest.id, smartrest.templates,2)
+
 
     def reset(self):
         self.initialized = False

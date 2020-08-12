@@ -19,7 +19,7 @@ import io
 import psutil
 import socket
 import json
-
+from sensehat import Sense
 
 startUp = False
 stopEvent = threading.Event()
@@ -37,7 +37,7 @@ c8y = C8yMQTT(config.get('device','host'),
                config.get('device','cacert'),
                loglevel=logging.getLevelName(config.get('device', 'loglevel')))
 
-
+sense = Sense(c8y)
 
 def sendConfiguration():
     with open(config_file, 'r') as configFile:
@@ -107,10 +107,12 @@ def sendMeasurements(stopEvent, interval):
     try:
         sendCPULoad()
         sendMemory()
+        sense.send()
         c8y.logger.info('sendMeasurements called')
         while not stopEvent.wait(interval):
             sendCPULoad()
             sendMemory()
+            sense.send()
             c8y.logger.info('sendMeasurements called')
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
@@ -211,6 +213,7 @@ def runAgent():
     ## Connect Startup
     connected = c8y.connect(on_message_startup,config.get('device', 'subscribe'))
     c8y.logger.info('Connection Result:' + str(connected))
+    
     if connected == 5:
         c8y.reset()
         c8y.logger.info('New Bootstrap needed. Restarting Service')
@@ -218,7 +221,6 @@ def runAgent():
     if not connected == 0:
         c8y.logger.info('Could not connect Restarting Service')
         os.system('sudo service c8y restart')
-
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
     if config.get('device','reboot') == '1':
         c8y.logger.info('reboot is active. Publishing Acknowledgement..')
@@ -232,6 +234,8 @@ def runAgent():
         config.set('device','config_update','0')
         with open(config_file, 'w') as configfile:
             config.write(configfile)
+    c8y.createSmartRestTemplates()
+    time.sleep(2)
     sendConfiguration()
     time.sleep(2)
     c8y.disconnect()

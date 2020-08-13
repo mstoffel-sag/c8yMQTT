@@ -84,6 +84,14 @@ class C8yMQTT(object):
         self.connected=rc
    
 
+    def serviceRestart(self,cause):
+        self.logger.info("Service Restart due to: " + cause )
+        os.system('sudo service c8y restart')
+
+    def reboot(self,cause):
+        self.logger.info("Rebooting due to: " + cause )
+        os.system('sudo reboot')
+
     def check_subs(self):
         wcount=0
         while wcount<10: #wait loop
@@ -148,7 +156,7 @@ class C8yMQTT(object):
     def on_disconnect(self,client, userdata, rc):
         self.logger.debug("on_disconnect rc: " +str(rc))
         if rc==5:
-            self.logger.error("Disconnected! Wrong Credentials: " +str(rc))
+            self.reset()
             return
         if rc!=0:
             self.logger.error("Disconnected! Try to reconnect: " +str(rc))
@@ -244,10 +252,11 @@ class C8yMQTT(object):
         self.connect(self.__on_message_createdevice,'s/e')
         self.logger.info( 'Creating Device')
         self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2)
+        time.sleep(5)
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         self.client.publish("s/us", "114,"+ self.operationString,2)
-        
+        self.client.publish("s/us", "118,c8yAgent",2)
 
         self.logger.info( 'Device created')
         time.sleep(2)
@@ -275,6 +284,7 @@ class C8yMQTT(object):
             self.logger.debug('config file removed')
         else:
             self.logger.debug('config file already missing')
+        self.serviceRestart("Reset called.")
 
     def disconnect(self):
 

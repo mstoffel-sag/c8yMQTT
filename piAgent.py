@@ -13,7 +13,6 @@ import sys
 import os
 from threading import Thread
 import threading
-import shlex
 import time
 import io
 import psutil
@@ -26,10 +25,6 @@ stopEvent = threading.Event()
 config_file = 'pi.properties'
 config = RawConfigParser()
 config.read(config_file)
-reset = 0
-resetMax = 3
-
-
 
 c8y = C8yMQTT(config.get('device','host'),
                int(config.get('device','port')),
@@ -119,6 +114,8 @@ def sendMeasurements(stopEvent, interval):
         c8y.logger.info('Exiting sendMeasurement...')
         sys.exit()
 
+
+
 def on_message_default(client, obj, msg):
     message = msg.payload.decode('utf-8')
     c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
@@ -167,9 +164,9 @@ def restart():
             with open(config_file, 'w') as configfile:
                 config.write(configfile)
             c8y.disconnect()
-            os.system('sudo reboot')
+            c8y.reboot("Received restart command from platform.")
         else:
-            c8y.logger.info('Received Reboot but already in progress')
+            c8y.logger.info('Received restart but already in progress')
 
 def updateConfig(message):
         
@@ -183,9 +180,7 @@ def updateConfig(message):
                 config.write(configFile)
             c8y.logger.info('Sending Config Update executing')
             setCommandExecuting('c8y_Configuration')
-            c8y.disconnect()
-            c8y.logger.info('Restarting Service')
-            os.system('sudo service c8y restart')
+            c8y.serviceRestart("ConfigUpdate")
         else:
             c8y.logger.info('Received Config Update but already in progress')
 
@@ -193,13 +188,11 @@ def updateConfig(message):
 def runAgent():
     # Enter Device specific values
     stopEvent.clear()
-    global reset
-    reset=0
     if c8y.initialized == False:
         serial = getserial()
         c8y.logger.info('Not initialized. Try to registering Device with serial: '+ serial)
         c8y.registerDevice(serial,
-                           serial,
+                           config.get('device','name') + '-' +serial ,
                            config.get('device','devicetype'),
                            getserial(),
                            gethardware(),
@@ -213,14 +206,12 @@ def runAgent():
     ## Connect Startup
     connected = c8y.connect(on_message_startup,config.get('device', 'subscribe'))
     c8y.logger.info('Connection Result:' + str(connected))
-    
+
     if connected == 5:
         c8y.reset()
-        c8y.logger.info('New Bootstrap needed. Restarting Service')
-        os.system('sudo service c8y restart')
     if not connected == 0:
-        c8y.logger.info('Could not connect Restarting Service')
-        os.system('sudo service c8y restart')
+        c8y.serviceRestart("Error conncting code: " +str(connected))
+
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
     if config.get('device','reboot') == '1':
         c8y.logger.info('reboot is active. Publishing Acknowledgement..')

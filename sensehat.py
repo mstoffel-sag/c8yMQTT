@@ -1,18 +1,22 @@
 from sense_hat import SenseHat
+import shlex
 
 
 class Sense:
     def __init__(self, c8y):
         self.sense = SenseHat()
         self.c8y = c8y
+        self.reset = 0
+        self.resetMax = 3
 
     def send(self):
-        self.c8y.logger.debug("Sending called: ")
+        self.c8y.logger.debug("Sensehat Sending called: ")
         self.sendTemperature()
         self.sendHumidity()
         self.sendPressure()
         self.sendAcceleration()
         self.sendGyroscope()
+        self.listenForJoystick()
 
     def sendTemperature(self):
         tempString = "211," + str(self.sense.get_temperature())
@@ -50,3 +54,26 @@ class Sense:
         gyString = "993,," + str(pitch) + "," + str(roll) + "," + str(yaw)
         self.c8y.logger.debug("Sending Gyroscope measurement: " + gyString)
         self.c8y.publish("s/uc/pi", gyString)
+
+    def displayMessage(self,message):
+        messageArray =  shlex.shlex(message, posix=True)
+        messageArray.whitespace =',' 
+        messageArray.whitespace_split =True 
+        self.c8y.logger.info("Display message: " + str(list(messageArray)[-1]))
+        self.sense.show_message(list(messageArray)[-1])
+        self.sense.clear
+
+    def listenForJoystick(self):
+        self.c8y.logger.info("listenForJoystick")
+        for event in self.sense.stick.get_events():
+            text = "The joystick was {} {}".format(event.action, event.direction)
+            self.c8y.logger.debug(text)
+            self.c8y.publish("s/uc/pi", "997,{},,{},{}".format(text,event.action, event.direction))
+            if event.action == 'pressed' and event.direction == 'middle':
+                self.reset
+                self.resetMax
+                self.reset += 1
+                if self.reset >= self.resetMax:
+                    self.c8y.logger.info('Resetting c8y.properties initializing re-register device....')
+                    self.c8y.reset()
+                    c8y.serviceRestart('Joystick reset')

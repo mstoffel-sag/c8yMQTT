@@ -19,9 +19,6 @@ import psutil
 import socket
 import json
 from sensehat import Sense
-import requests
-from requests.auth import HTTPBasicAuth
-import zipfile
 
 startUp = False
 stopEvent = threading.Event()
@@ -125,19 +122,15 @@ def on_message_default(client, obj, msg):
 
     if message.startswith('510'):
         Thread(target=restart).start()
-
     if message.startswith('513'):
         Thread(target=updateConfig,args=(message,)).start()
-
     if message.startswith('520'):
        c8y.logger.info('Received Config Upload. Sending config')
        sendConfiguration()
        setCommandExecuting('c8y_SendConfiguration')
        setCommandSuccessfull('c8y_SendConfiguration')
-
     if message.startswith('1001'):
         sense.displayMessage(message)
-
     if message.startswith('1003'):
         fields = message.split(",")
         tcp_host = fields[2]
@@ -145,31 +138,6 @@ def on_message_default(client, obj, msg):
         connection_key = fields[4]
         c8y.logger.info('Received Remote Connect.')
         c8y.remoteConnect(tcp_host,tcp_port,connection_key,config.get('device','host'))
-
-    if message.startswith('516'):
-        fields = message.split(",")
-        name = fields[2]
-        version = fields[3]
-        url = fields[4]
-        c8y.logger.info('Software Update:' + name + ' Version: ' + version)
-        r = requests.get(url, auth=HTTPBasicAuth(c8y.tenant+'/'+ c8y.user, c8y.password))
-        setCommandExecuting('c8y_SoftwareList')
-        c8y.logger.info('Download result: ' + str(r.status_code))
-        filename = name + '-' + version + '.zip'
-        with open(filename, 'wb') as f:
-            f.write(r.content)
-        with open('release','wt') as releasefile:
-            releasefile.write(version)
-        # with zipfile.ZipFile('backup.zip', 'w') as backup:
-        #     for root, dirs, files in os.walk('.'):
-        #         for file in files:
-        #             backup.write(os.path.join(root, file))
-        
-        with zipfile.ZipFile(filename, 'r') as zip_ref:
-            zip_ref.extractall('updatetest')
-
-
-        
 
 
 def on_message_startup(client, obj, msg):

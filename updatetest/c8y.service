@@ -1,0 +1,13 @@
+[Unit]
+Description=Cumulocity PI Agent
+After=multi-user.target
+
+[Service]
+User=pi
+ExecStartPre=/bin/sleep 3
+Type=idle
+WorkingDirectory=/home/pi/git/c8yMQTT
+ExecStart=/usr/bin/python3 /home/pi/git/c8yMQTT/piAgent.py
+
+[Install]
+WantedBy=multi-user.target

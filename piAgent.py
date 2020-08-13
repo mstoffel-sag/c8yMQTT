@@ -129,6 +129,8 @@ def on_message_default(client, obj, msg):
        sendConfiguration()
        setCommandExecuting('c8y_SendConfiguration')
        setCommandSuccessfull('c8y_SendConfiguration')
+    if message.startswith('1001'):
+        sense.displayMessage(message)
     if message.startswith('1003'):
         fields = message.split(",")
         tcp_host = fields[2]

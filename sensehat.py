@@ -59,8 +59,9 @@ class Sense:
         messageArray =  shlex.shlex(message, posix=True)
         messageArray.whitespace =',' 
         messageArray.whitespace_split =True 
-        self.c8y.logger.info("Display message: " + str(list(messageArray)[-1]))
-        self.sense.show_message(list(messageArray)[-1])
+        msg = str(list(messageArray)[-1])
+        self.c8y.logger.info("Display message: " + msg )
+        self.sense.show_message(msg)
         self.sense.clear
 
     def listenForJoystick(self):

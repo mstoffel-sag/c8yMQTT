@@ -10,7 +10,6 @@ import os, time, threading, ssl
 import sys
 import re
 import paho.mqtt.client as mqtt
-from device_proxy import DeviceProxy 
 import smartrest
 
 
@@ -50,6 +49,7 @@ class C8yMQTT(object):
         self.logHandlerStOut.setFormatter(formatter)
 
         self.logger.addHandler(self.logHandlerStOut)
+
         self.logger.addHandler(self.logHandler)
         
         self.topic_ack=[]
@@ -84,13 +84,6 @@ class C8yMQTT(object):
         self.connected=rc
    
 
-    def serviceRestart(self,cause):
-        self.logger.info("Service Restart due to: " + cause )
-        os.system('sudo service c8y restart')
-
-    def reboot(self,cause):
-        self.logger.info("Rebooting due to: " + cause )
-        os.system('sudo reboot')
 
     def check_subs(self):
         wcount=0
@@ -251,8 +244,7 @@ class C8yMQTT(object):
         self.client.username_pw_set(self.tenant+'/'+self.user,self.password)
         self.connect(self.__on_message_createdevice,'s/e')
         self.logger.info( 'Creating Device')
-        self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2)
-        time.sleep(5)
+        self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2).wait_for_publish()
         self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
         self.client.publish("s/us", "117,"+ self.requiredInterval,2)
         self.client.publish("s/us", "114,"+ self.operationString,2)
@@ -272,7 +264,7 @@ class C8yMQTT(object):
         self.logger.info("Creating SmartResetTemplates.")
         self.client.publish(smartrest.id, smartrest.templates,2)
 
-
+    
     def reset(self):
         self.initialized = False
         self.logger.info('reseting')
@@ -339,10 +331,8 @@ class C8yMQTT(object):
         self.logger.debug('Payload: '+payload )
         return payload
     
-    def remoteConnect( self,tcp_host,tcp_port,connection_key,base_url):
-        if self.initialized:
-            devProx = DeviceProxy( tcp_host,tcp_port,connection_key,base_url, self.tenant,self.user,self.password,self.token)
-            devProx.connect()
+
+
 
 
         

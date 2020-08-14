@@ -21,21 +21,10 @@ import json
 from sensehat import Sense
 import requests
 from requests.auth import HTTPBasicAuth
-import zipfile
+from zipfile import ZipFile
+from device_proxy import DeviceProxy 
+import concurrent.futures
 
-startUp = False
-stopEvent = threading.Event()
-config_file = 'pi.properties'
-config = RawConfigParser()
-config.read(config_file)
-
-c8y = C8yMQTT(config.get('device','host'),
-               int(config.get('device','port')),
-               config.getboolean('device','tls'),
-               config.get('device','cacert'),
-               loglevel=logging.getLevelName(config.get('device', 'loglevel')))
-
-sense = Sense(c8y)
 
 def sendConfiguration():
     with open(config_file, 'r') as configFile:
@@ -88,7 +77,14 @@ def gethardware():
     c8y.logger.debug('Found Hardware: ' + myrevision)
     return myrevision
 
-       
+def serviceRestart(cause):
+    c8y.logger.info("Service Restart due to: " + cause )
+    os.system('sudo service c8y restart')
+        
+def reboot(cause):
+    c8y.logger.info("Rebooting due to: " + cause )
+    os.system('sudo reboot')
+
 def sendCPULoad():
     tempString = "995,," + str(psutil.cpu_percent())
     c8y.logger.debug("Sending CPULoad: " + tempString)
@@ -132,11 +128,11 @@ def on_message_default(client, obj, msg):
     if message.startswith('520'):
        c8y.logger.info('Received Config Upload. Sending config')
        sendConfiguration()
-       setCommandExecuting('c8y_SendConfiguration')
-       setCommandSuccessfull('c8y_SendConfiguration')
 
     if message.startswith('1001'):
+        setCommandExecuting('c8y_Message')
         sense.displayMessage(message)
+        setCommandSuccessfull('c8y_Message')
 
     if message.startswith('1003'):
         fields = message.split(",")
@@ -144,7 +140,16 @@ def on_message_default(client, obj, msg):
         tcp_port = int(fields[3])
         connection_key = fields[4]
         c8y.logger.info('Received Remote Connect.')
-        c8y.remoteConnect(tcp_host,tcp_port,connection_key,config.get('device','host'))
+        setCommandExecuting('c8y_RemoteAccessConnect') 
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(remoteConnect,tcp_host,tcp_port,connection_key,config.get('device','host') )
+            return_value = future.result()
+            c8y.logger.info('Remote Connect Result:' + return_value)
+            if return_value.startswith('success'):
+                setCommandSuccessfull('c8y_RemoteAccessConnect') 
+            else:
+                setCommandFailed('c8y_RemoteAccessConnect',return_value)
+        
 
     if message.startswith('516'):
         fields = message.split(",")
@@ -152,31 +157,86 @@ def on_message_default(client, obj, msg):
         version = fields[3]
         url = fields[4]
         c8y.logger.info('Software Update:' + name + ' Version: ' + version)
+        Thread(target=softwareUpdate,args=(name,version,url,)).start()
+
+def remoteConnect( tcp_host,tcp_port,connection_key,base_url):
+    try:
+        c8y.logger.info('Starting Remote to: ' + str(tcp_host) + ':' + str(tcp_port) + ' Key: ' + str(connection_key) + ' url: ' + str(base_url))
+        devProx = DeviceProxy( tcp_host,tcp_port,connection_key,base_url, c8y.tenant,c8y.user,c8y.password,None)
+        devProx.connect()
+        c8y.logger.info('Remote Connection successfull finished')
+        return 'success'
+    except Exception as e:
+        c8y.logger.error('Remote Connection error:' + str(e))
+        return str(e)
+
+
+def createDir(filename):
+    if not os.path.exists(os.path.dirname(filename)):
+            try:
+                os.makedirs(os.path.dirname(filename))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+
+
+def getRelease():
+    try:
+        with open('release') as f: 
+            release = f.read()
+            c8y.logger.info('Release: ' + str(release))
+            return release
+    except Exception as e:
+        c8y.logger.error('Error getting release file: ' + str(e))
+        return 'error getting release file'
+
+
+
+def softwareUpdate(name,version,url):
+    try:
+        # Download new firmware
         r = requests.get(url, auth=HTTPBasicAuth(c8y.tenant+'/'+ c8y.user, c8y.password))
         setCommandExecuting('c8y_SoftwareList')
         c8y.logger.info('Download result: ' + str(r.status_code))
-        filename = name + '-' + version + '.zip'
-        with open(filename, 'wb') as f:
+        
+        ## write downloaded new software file to disk
+        newSoftwareFile = './software_download/release-' + name +'-' + version + '.zip'
+        createDir(newSoftwareFile)
+        with open(newSoftwareFile, 'wb') as f:
             f.write(r.content)
+
+        # create backup of old version
+        oldRelease = getRelease()
+        
+        c8y.logger.info('OldRelease: ' + str(oldRelease))
+        backupFile = './backup/backup-' + oldRelease+ '.zip'
+        c8y.logger.info('BackupFile: ' + str(backupFile))
+        createDir(backupFile)
+        exclude = ('.','backup','c8yAgent.log' , 'zip')
+        with ZipFile(backupFile, 'w') as backup:
+            files = [f for f in os.listdir('.') if os.path.isfile(f)]
+            for file in files:
+                if not file.startswith (exclude) and not file.endswith(exclude):
+                    c8y.logger.info('Adding to backup: ' + str(file))
+                    backup.write(file)
+
+        # install new release
+        with ZipFile(newSoftwareFile, 'r') as newrelease:
+            newrelease.extractall('.')
+        
+        # Write new version to release file
         with open('release','wt') as releasefile:
             releasefile.write(version)
-        # with zipfile.ZipFile('backup.zip', 'w') as backup:
-        #     for root, dirs, files in os.walk('.'):
-        #         for file in files:
-        #             backup.write(os.path.join(root, file))
-        
-        with zipfile.ZipFile(filename, 'r') as zip_ref:
-            zip_ref.extractall('updatetest')
-
-
-        
-
+        setCommandSuccessfull('c8y_SoftwareList')
+        serviceRestart('New Software')
+    except Exception as e:
+        c8y.logger.info('SoftwareUpdateError: ' + str(e) )
+        setCommandFailed('c8y_SoftwareList')
 
 def on_message_startup(client, obj, msg):
     # Can be used to process messages while startup
     message = msg.payload.decode('utf-8')
     c8y.logger.info("On_Message_Startup Received: " + msg.topic + " " + str(msg.qos) + " " + message)
-
 
 def setCommandExecuting(command):
     c8y.logger.info('Setting command: '+ command + ' to executing')
@@ -198,25 +258,26 @@ def restart():
             with open(config_file, 'w') as configfile:
                 config.write(configfile)
             c8y.disconnect()
-            c8y.reboot("Received restart command from platform.")
+            reboot("Received restart command from platform.")
         else:
             c8y.logger.info('Received restart but already in progress')
 
 def updateConfig(message):
+    c8y.logger.info('UpdateConfig')
+    if config.get('device','config_update') != '1':
+        plain_message = c8y.getPayload(message).strip('\"')
+        with open(config_file, 'w') as configFile:
+            config.readfp(io.StringIO(plain_message))
+            c8y.logger.info('Current config:' + str(config.sections()))
+            config.set('device','config_update','1')
+            config.write(configFile)
+        c8y.logger.info('Sending Config Update executing')
+        setCommandExecuting('c8y_Configuration')
+        setCommandSuccessfull('c8y_Configuration')
+        serviceRestart("ConfigUpdate")
         
-        c8y.logger.info('UpdateConfig')
-        if config.get('device','config_update') != '1':
-            plain_message = c8y.getPayload(message).strip('\"')
-            with open(config_file, 'w') as configFile:
-                config.readfp(io.StringIO(plain_message))
-                c8y.logger.info('Current config:' + str(config.sections()))
-                config.set('device','config_update','1')
-                config.write(configFile)
-            c8y.logger.info('Sending Config Update executing')
-            setCommandExecuting('c8y_Configuration')
-            c8y.serviceRestart("ConfigUpdate")
-        else:
-            c8y.logger.info('Received Config Update but already in progress')
+    else:
+        c8y.logger.info('Received Config Update but already in progress')
 
 
 def runAgent():
@@ -244,9 +305,15 @@ def runAgent():
     if connected == 5:
         c8y.reset()
     if not connected == 0:
-        c8y.serviceRestart("Error conncting code: " +str(connected))
+        serviceRestart("Error conncting code: " +str(connected))
 
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
+    for _ in range(20):
+        setCommandExecuting('c8y_SoftwareList')
+    for _ in range(20):
+        setCommandFailed('c8y_SoftwareList','Cleanup')
+        
+
     if config.get('device','reboot') == '1':
         c8y.logger.info('reboot is active. Publishing Acknowledgement..')
         setCommandSuccessfull('c8y_Restart')
@@ -259,7 +326,10 @@ def runAgent():
         config.set('device','config_update','0')
         with open(config_file, 'w') as configfile:
             config.write(configfile)
+
     c8y.createSmartRestTemplates()
+    c8y.publish("s/us", "114,"+ config.get('device','operations'))
+    c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
     time.sleep(2)
     sendConfiguration()
     time.sleep(2)
@@ -270,7 +340,27 @@ def runAgent():
     sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))
     sendThread.start()
 
-runAgent()
+
+stopEvent = threading.Event()
+config_file = 'pi.properties'
+config = RawConfigParser()
+config.read(config_file)
+
+c8y = C8yMQTT(config.get('device','host'),
+            int(config.get('device','port')),
+            config.getboolean('device','tls'),
+            config.get('device','cacert'),
+            loglevel=logging.getLevelName(config.get('device', 'loglevel')))
+
+sense = Sense(c8y)
+
+try:
+    runAgent()
+except Exception as e:
+    c8y.logger.error("runAgent Error:" + str(e))
+
+
+
 
 
 

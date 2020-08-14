@@ -1,3 +1,0 @@
-paho-mqtt
-psutil
-websocket_client

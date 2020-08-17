@@ -101,12 +101,18 @@ def sendMeasurements(stopEvent, interval):
     try:
         sendCPULoad()
         sendMemory()
-        sense.send()
+        try:
+            sense.send()
+        except Exception:
+            c8y.logger.info("No sense hat found omitting.")
         c8y.logger.info('sendMeasurements called')
         while not stopEvent.wait(interval):
             sendCPULoad()
             sendMemory()
-            sense.send()
+            try:
+                sense.send()
+            except Exception:
+                c8y.logger.info("No sense hat found omitting.")
             c8y.logger.info('sendMeasurements called')
         c8y.logger.info('sendMeasurement was stopped..')
     except (KeyboardInterrupt, SystemExit):
@@ -131,8 +137,12 @@ def on_message_default(client, obj, msg):
 
     if message.startswith('1001'):
         setCommandExecuting('c8y_Message')
-        sense.displayMessage(message)
-        setCommandSuccessfull('c8y_Message')
+        try:
+            sense.displayMessage(message)
+            setCommandSuccessfull('c8y_Message')
+        except Exception as e:
+            c8y.logger.error("Sense Hat Error: omitting." )
+            setCommandFailed('c8y_Message',str(e))
 
     if message.startswith('1003'):
         fields = message.split(",")
@@ -352,8 +362,10 @@ c8y = C8yMQTT(config.get('device','host'),
             config.get('device','cacert'),
             loglevel=logging.getLevelName(config.get('device', 'loglevel')))
 
-sense = Sense(c8y)
-
+try:
+    sense = Sense(c8y)
+except Exception as e:
+    c8y.logger.error("Sense Hat Error:" + str(e))
 try:
     runAgent()
 except Exception as e:

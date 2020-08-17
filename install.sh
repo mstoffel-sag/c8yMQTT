@@ -14,6 +14,7 @@ ExecStart=/usr/bin/python3 $(pwd)/piAgent.py
 [Install]
 WantedBy=multi-user.target" > c8y.service
 
+sudo apt install sense-hat
 
 python3 -m pip install --upgrade pip
 python3 -m pip install -r ./requirements.txt

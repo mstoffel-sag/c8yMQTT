@@ -5,7 +5,7 @@ templates = '''10,991,POST,MEASUREMENT,false,c8y_Acceleration,,c8y_Acceleration.
 10,993,POST,MEASUREMENT,false,c8y_GyroscopeMeasurement,,c8y_GyroscopeMeasurement.pitch.value,NUMBER,,c8y_GyroscopeMeasurement.roll.value,NUMBER,,c8y_GyroscopeMeasurement.yaw.value,NUMBER,
 10,994,POST,MEASUREMENT,false,c8y_PressureMeasurement,,c8y_Pressure.hpa.value,NUMBER,
 10,995,POST,MEASUREMENT,false,CPULoad,,CPULoad.L.value,NUMBER,,CPULoad.L.unit,STRING,%
-10,996,POST,MEASUREMENT,false,MemoryUsage,,Memory.total.value,INTEGER,,Memory.total.unit,STRING,MB,Memory.available.value,INTEGER,,Memory.available.unit,STRING,MB,Memory.swap.value,INTEGER,,Memory.swap.unit,STRING,MB
+10,996,POST,MEASUREMENT,false,MemoryUsage,,Memory.total.value,NUMBER,,Memory.total.unit,STRING,MB,Memory.available.value,NUMBER,,Memory.available.unit,STRING,MB,Memory.swap.value,NUMBER,,Memory.swap.unit,STRING,MB
 10,997,POST,EVENT,false,c8y_Joystick,,,action,STRING,,direction,STRING,
 11,1001,c8y_Message,c8y_Message,text,
 11,520,,c8y_SendConfiguration,description,status,

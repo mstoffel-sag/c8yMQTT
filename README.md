@@ -58,7 +58,7 @@ echo "alias python='/usr/bin/python3'" >>  ~/.bashrc
 
 ## Configure the Cumulocity Tenant
 
-The used MQTT SmartREST Template for the piAgent is stored in pi.json and has to be imported into the cumulocity tenant beforehand. It can be imported via Devicemanagement -> Device types -> SmartREST templates.
+The used MQTT SmartREST Template for the piAgent is created by the agent itself. If there is a new version of the Agent deployed it is good practice to delete the SmartRest Template via Devicemanagement -> Device types -> SmartREST templates. This will make sure that the latest SmartRest template is used.
 
 ### Register Device
 
@@ -78,6 +78,7 @@ clientid =
 If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
 
 To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set.
+If the 
 
 __pi.properties__
 
@@ -119,18 +120,6 @@ The Agent supports the following functions:
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
 * Joystick -> Events are created on pressing. If the joystick is pressed three times the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
 
-## pcAgent.py Module
-The pcAgent.py module is a slight modification to run on PC Hardware. It shares most of the configuration but will read CPU and Memory Usage via the psutil module. 
-
-Prerequisites for the module to run is the psutils module. Under Windows Microsoft Visual C++ 14.0 is required. Get it with "Microsoft Visual C++ Build Tools": 
-
-https://visualstudio.microsoft.com/downloads/
-
-then install pip install psutils
-The serial/model  has to be configured inside the pcAgent.py file:
-
-serial = 'putyourserial'
-model = 'MyPcModel'
 
 ### Docker Support 
 PC Agent and PI Agent can run within Docker. Dockerfiles can be used to build an image:

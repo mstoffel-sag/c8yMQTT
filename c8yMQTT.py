@@ -148,9 +148,9 @@ class C8yMQTT(object):
     
     def on_disconnect(self,client, userdata, rc):
         self.logger.debug("on_disconnect rc: " +str(rc))
-        if rc==5:
-            self.reset()
-            return
+        # if rc==5:
+        #     self.reset()
+        #     return
         if rc!=0:
             self.logger.error("Disconnected! Try to reconnect: " +str(rc))
             self.client.reconnect()

@@ -35,7 +35,6 @@ The class C8yMQTT let's you connect your device to the Cumulocity Cloud using mq
 
 To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with device specific functionality (Send Measurements etc.). piAgent.py provides a sample implementation for the Raspberry PI 3.
 
-
 ## Prerequisites for Raspbian distribution
 
 #### Enable SPI Interface
@@ -43,42 +42,23 @@ To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with 
 edit /boot/config.txt and enable
 dtparam=spi=on
 
-#### Python3
- 
-sudo apt-get install python3-pip  
-sudo apt-get install python3  
-sudo apt-get install python-dev python3-dev  
-sudo apt-get install ca-certificates  
-sudo apt-get install sense-hat
-pip3 install paho-mqtt 
 
-echo "alias python='/usr/bin/python3'" >>  ~/.bashrc
+## Getting Started
 
-# Getting Started
+### Install the agent
 
-## Configure the Cumulocity Tenant
+checkout the repo and execute install.sh (sudo rights are needed).
+This will install all dependencies (python etc.) via apt and pip and create a systemd file "c8y.service" that is deployed to  /etc/systemd/system/  the agent is now registered as a linux daemon. You can start it via service c8y start.
 
-The used MQTT SmartREST Template for the piAgent is created by the agent itself. If there is a new version of the Agent deployed it is good practice to delete the SmartRest Template via Devicemanagement -> Device types -> SmartREST templates. This will make sure that the latest SmartRest template is used.
+If the requirements are installed for debugging you can also start the agent simply by 
 
-### Register Device
+python3 piAgent.py
 
-__c8y.properties__  
-c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
+The agent is designed to run also without a sense hat extension. Then only CPU and Memory Measurements are transmitted.
 
-!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY REGISTERED WITH IT'S SERIAL NUMBER!!!
-If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
+### Configuration
 
-  
-[credentials]  
-user =  
-tenant =   
-password =   
-clientid =
-
-If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
-
-To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set.
-If the 
+The agent can be configured via the followin file:
 
 __pi.properties__
 
@@ -96,19 +76,24 @@ the pi.properties file holds device specific parameters.
 * reboot -> will be set by the restart device command to prevent from a infinite loop.
 * config_update -> same as reboot
 * bootstrap_pwd -> needed for auto registration process
-*  
 
+### Device Registration
 
-### Agent Run
-Checkout the project. For testing just run:  
-python3 piAgent.py  
- 
+To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set (default).
 
-### Agent Install
-The Agent supports a few operations like Reload Configuration / Save Configuration and Restart. In order to work these operators need to perform a restart. This is done via a systemd service which has to be registered.
+!!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY REGISTERED WITH IT'S SERIAL NUMBER!!!
+If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
 
-Execute install.sh (You need sudo rights).  
-A service called c8y will be registered with systemd
+__c8y.properties__  
+After successfull registration c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
+
+[credentials]  
+user =  
+tenant =   
+password =   
+clientid =
+
+If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
 
 ### Build in functions
 
@@ -118,20 +103,7 @@ The Agent supports the following functions:
 * Restart -> The Raspberry PI an be rebooted via the restart command.
 * Send Message to the Device -> Via the Send Message Widget in the Cockpit Application. Text can be send to the PI and will be displayed on the SensHats LED  Matrix
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
-* Joystick -> Events are created on pressing. If the joystick is pressed three times the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
+* Joystick -> Events are created on pressing. __If the joystick is pressed three times__ the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
+* Remote Access -> If the remote access microservice is subscribed to the cumulocity tenant and the user has remote access rights remote access can be configured within device management of the agents device
+* !!!Experimental!!! Software Update. You can create a zip file of the repo content deploy that to the cumulocity software repository. You should now be able to execute a software update in device management.
 
-
-### Docker Support 
-PC Agent and PI Agent can run within Docker. Dockerfiles can be used to build an image:
-
-Build - PC:
-docker build -t pcagent -f ./Dockerfile.pcAgent .
-
-Build - Raspberry Pi:
-docker build -t piagent -f ./Dockerfile.piAgent .
-
-Run - PC:
-docker run -it -v $PWD:/usr/src/app pcagent
-
-Run - Raspberry Pi:
-docker run -it -v $PWD:/usr/src/app --privileged=true piagent

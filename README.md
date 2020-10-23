@@ -49,8 +49,9 @@ dtparam=spi=on
 
 checkout the repo and execute install.sh (sudo rights are needed).
 This will install all dependencies (python etc.) via apt and pip and create a systemd file "c8y.service" that is deployed to  /etc/systemd/system/  the agent is now registered as a linux daemon. You can start it via service c8y start.
+When the agent starts the first time it creates the necessary smartrest template. To ensure that the newest version of the template you can delete it in the platform. The agen will create it on every startup new. 
 
-If the requirements are installed for debugging you can also start the agent simply by 
+If the requirements are installed, for debugging you can also start the agent simply by: 
 
 python3 piAgent.py
 

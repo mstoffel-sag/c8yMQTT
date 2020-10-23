@@ -13,10 +13,13 @@ jobs:
     - uses: actions/checkout@v2
       with:
         ref: master
+    - name: Get the Tag version
+      id: get_version
+      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
     - name: Archive Release
       uses: thedoctor0/zip-release@master
       with:
-        filename: piAgent-${{ github.ref }}.zip
+        filename: piAgent-${{ steps.get_version.outputs.VERSION }}.zip
         exclusions: '*.git* *pics* *.github'
     - name: Create Release
       id: create_release
@@ -28,9 +31,6 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-    - name: Get the version
-      id: get_version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
     - name: Upload Release Asset
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
@@ -38,6 +38,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./piAgent.zip
-        asset_name: piAgent.zip
+        asset_path: ./piAgent-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_name: piAgent-${{ steps.get_version.outputs.VERSION }}.zip
         asset_content_type: application/zip

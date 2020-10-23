@@ -24,7 +24,7 @@ Contact us at [TECHcommunity](mailto:technologycommunity@softwareag.com?subject=
 
 ## C8yMQTT Class
 
-The class C8yMQTT let's you connect your device to the Cumulocity Cloud using mqtt. It provides basic methods to:
+The class C8yMQTT lets you connect your device to the Cumulocity Cloud using mqtt. It provides basic methods to:
 
 * Connect to a cumulocity tenant via mqtt (tls supported)
 * Register a device, fetch credentials and store them on the device
@@ -49,13 +49,13 @@ dtparam=spi=on
 
 checkout the repo and execute install.sh (sudo rights are needed).
 This will install all dependencies (python etc.) via apt and pip and create a systemd file "c8y.service" that is deployed to  /etc/systemd/system/  the agent is now registered as a linux daemon. You can start it via service c8y start.
-When the agent starts the first time it creates the necessary smartrest template. To ensure that the newest version of the template you can delete it in the platform. The agen will create it on every startup new. 
+When the agent starts the first time it creates the necessary smartrest template. To ensure that the newest version of the template is active you can delete it in the platform. The agent will create it on every startup anew.
 
 If the requirements are installed, for debugging you can also start the agent simply by: 
 
 python3 piAgent.py
 
-The agent is designed to run also without a sense hat extension. Then only CPU and Memory Measurements are transmitted.
+The agent is designed to run also without a sense hat extension. Then only CPU and Memory Measurements are transmitted. In general the agent can run on any python3 capable platform most critical dependency is psutils that is most hardware/OS dependent.
 
 ### Configuration
 
@@ -86,7 +86,7 @@ To autoregister your pi got to In Cumulocity -> Device Management create a new D
 If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
 
 __c8y.properties__  
-After successfull registration c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
+After successful registration c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
 
 [credentials]  
 user =  
@@ -105,6 +105,6 @@ The Agent supports the following functions:
 * Send Message to the Device -> Via the Send Message Widget in the Cockpit Application. Text can be send to the PI and will be displayed on the SensHats LED  Matrix
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
 * Joystick -> Events are created on pressing. __If the joystick is pressed three times__ the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
-* Remote Access -> If the remote access microservice is subscribed to the cumulocity tenant and the user has remote access rights remote access can be configured within device management of the agents device
+* Remote Access (thx Stefan W.)-> If the remote access microservice is subscribed to the cumulocity tenant and the user has remote access rights remote access can be configured within device management of the agents device
 * !!!Experimental!!! Software Update. You can create a zip file of the repo content deploy that to the cumulocity software repository. You should now be able to execute a software update in device management.
 

@@ -2,6 +2,8 @@ name: Create Dev Release1
 
 on: 
   push:
+    branches: 
+      - master
     tags:
         - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 jobs:
@@ -10,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: test
+        ref: master
     - name: Archive Release
       uses: thedoctor0/zip-release@master
       with:

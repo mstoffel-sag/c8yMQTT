@@ -1,7 +1,7 @@
 name: Create Dev Release1
 
 on: 
-  push:
+  create:
     branches: 
       - master
     tags:

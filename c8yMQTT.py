@@ -22,20 +22,21 @@ class C8yMQTT(object):
     if c8y.initialized == False:
       c8y.registerDevice("testdevice", "Test device", "c8y_TestDevice", "serialNumberTest", "Meine Hardware Nummer", "reversion 1234","c8y_Restart,c8y_Message")
     '''
-    def readConfig(self):
+    def readCredentials(self):
         self.config.read(self.configFile)
         self.tenant= self.config.get('credentials', 'tenant')
         self.user= self.config.get('credentials', 'user')
         self.clientId= self.config.get('credentials', 'clientid')
         self.password= self.config.get('credentials', 'password')
-        #self.logger = logging.getLogger('readConfig')
+        #self.logger = logging.getLogger('readCredentials')
     
-    def __init__(self,mqtthost,mqttport, tls , cacert,loglevel=logging.INFO):
+    def __init__(self,clientId, mqtthost,mqttport,tls,cacert,cert_auth,client_cert,client_key,loglevel=logging.INFO):
         '''
         Read Configuration file
         Connect to configured tenant
         do device onboarding if not already registered
         '''
+        self.clientId = clientId
         self.ackpub = -1
         self.lastpub = -1
         self.connected = -1
@@ -59,25 +60,36 @@ class C8yMQTT(object):
         self.mqttport = mqttport
         self.cacert = cacert
         self.tls = tls
+        self.cert_auth = cert_auth
+        self.client_cert = client_cert
+        self.client_key = client_key
         
         self.token = None
         
         self.templates = smartrest.templates
 
-        if not os.path.exists(self.configFile):
-            self.initialized = False
-            self.logger.error('Config file does not exist, please call registerDevice() of edit Config: '+ self.configFile)
-            return 
+        if not self.cert_auth:
 
+            if not os.path.exists(self.configFile):
+                self.initialized = False
+                self.logger.error('Config file does not exist, please call registerDevice() of edit Config: '+ self.configFile)
+                return 
 
-        self.readConfig()
-        
-        if self.password == '' or self.user == '' or self.tenant == '' or self.clientId == '':
-            self.logger.error('Coould not  initialize Agent. Missing Values in c8y.properties')
-            self.initialized = False
+            self.readCredentials()
+            
+            if (self.password == '' or self.user == '' or self.tenant == '' or self.clientId == '') and not self.cert_auth:
+                self.logger.error('Coould not  initialize Agent. Missing Values in c8y.properties')
+                self.initialized = False
+            else:
+                self.logger.info('Successfully initialized.')
+                self.initialized = True
+
         else:
-            self.logger.info('Successfully initialized.')
+            self.logger.info('Using certificate authentication. Successfully initialized.')
             self.initialized = True
+
+
+
 
     def on_connect(self,client, userdata, flags, rc):
         self.logger.info("on_connect result: " + str(rc))
@@ -164,22 +176,40 @@ class C8yMQTT(object):
             topics -- a list of topics strings like s/ds to subscribe to
         
         ''' 
-        # if self.initialized == False:
-        #     self.logger.error('Not initialized, please call registerDevice() of edit c8y.properties file')
-        #     return
+        if self.initialized == False:
+            self.logger.error('Not initialized, please call bootstrap() of edit c8y.properties file. Alternatively you can use cert auth.')
+            return
+
         self.client = mqtt.Client(client_id=self.clientId)
+
         if self.tls:
-            self.client.tls_set(self.cacert) 
-        self.client.username_pw_set(self.tenant+'/'+ self.user, self.password)
+            if self.cert_auth:
+                self.client.tls_set(self.cacert,
+                                    certfile=self.client_cert,
+                                    keyfile=self.client_key,
+                                    tls_version=ssl.PROTOCOL_TLSv1_2,
+                                    cert_reqs= ssl.CERT_NONE
+                                    )
+            else:
+                self.client.tls_set(self.cacert) 
+                self.client.username_pw_set(self.tenant+'/'+ self.user, self.password)
+        else:
+            self.client.username_pw_set(self.tenant+'/'+ self.user, self.password)
+
+        
         self.client.on_message = on_message
         self.client.on_publish = self.on_publish
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         self.client.on_subscribe = self.on_subscribe
         self.client.on_log = self.on_log
-        self.logger.debug('Creds: ' + self.tenant + '/' + self.user + ' pwd: ' + self.password )
+        if self.cert_auth:
+            self.logger.debug('Using certificate authenticaiton' )
+        else:
+            self.logger.debug('Using Basic Authentication withe Creds: ' + self.tenant + '/' + self.user + ' pwd: ' + self.password )
         self.logger.info('Connecting to: ' + self.mqtthost + ':' + str(self.mqttport) )
         self.client.loop_start()
+        self.logger.info(str(self.client))
         self.client.connect(self.mqtthost, self.mqttport,keepalive=60)
         while self.connected == -1:
             self.logger.debug('Waiting for Connect.' + str(self.connected))
@@ -187,6 +217,7 @@ class C8yMQTT(object):
         self.logger.debug('After Waiting for Connect.' + str(self.connected))
         if not self.connected == 0:
             self.logger.debug('Connect not successfull return to client. Code:' + str(self.connected))
+            self.client.disconnect()
             return self.connected
         self.subscribe_topics(topics)
         if not self.check_subs():
@@ -194,24 +225,17 @@ class C8yMQTT(object):
             return 17
         return self.connected
 
-    def registerDevice(self,clientId,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval,bootstrap_password):
-        
+    def initDevice(self,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):
         '''
-        Will register a new device to the c8y platform.
-        Please create a device registration on the platfomrm bevorhand
-        
-        Keyword Arguments:
-        clientId -- external:wq
-        Id of the device
         deviceName -- Device Name (displayed in the UI)
         deviceType -- Device Type
         serialNumber -- Serial of the device
         hardwareModel -- Hardware Model of the device
         reversion -- Hardware Reversion of the device
         operationString -- Comma seperated string which operations the device supports e.g 'c8y_Message,c8y_Restart
-        requiredInterval -- indicates in which interval the device must talk to the platform        
+        requiredInterval -- indicates in which interval the device must talk to the platform
         '''
-        self.clientId = clientId
+
         self.deviceName = deviceName
         self.deviceType = deviceType
         self.serialNumber = serialNumber
@@ -220,11 +244,32 @@ class C8yMQTT(object):
         self.requiredInterval = requiredInterval
         self.operationString = operationString
 
+        self.logger.info( 'Initialize Device')
+        self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2).wait_for_publish()
+        self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
+        self.client.publish("s/us", "117,"+ self.requiredInterval,2)
+        self.client.publish("s/us", "114,"+ self.operationString,2)
+        self.client.publish("s/us", "118,c8yAgent",2)
+
+        self.logger.info( 'Device created')
+
+    def bootstrap(self,bootstrap_password):
+        
+        '''
+        Will register a new device to the c8y platform.
+        Please create a device registration on the platfomrm bevorhand
+        
+        Keyword Arguments:
+        clientId -- external:wq
+        Id of the device
+        '''
+
+
         self.user ='devicebootstrap' 
         self.password = bootstrap_password
         self.tenant = 'management'
 
-        self.connect(self.__on_messageRegistration,'s/dcr,s/e')
+        self.connect(self.__on_messageRegistration,'s/e,s/dcr')
         while True:
             if self.initialized == False:
                 self.logger.info('Waiting for Credentials')
@@ -233,31 +278,6 @@ class C8yMQTT(object):
             else:
                 self.logger.info('Credentials Received')
                 break
-        self.disconnect()
-            
-        if self.initialized == False:
-            self.logger.error( 'Could not register device. Exiting')
-            exit
-        
-        self.logger.info( 'Reconnection with received creds')
-        self.readConfig()
-        self.client.username_pw_set(self.tenant+'/'+self.user,self.password)
-        self.connect(self.__on_message_createdevice,'s/e')
-        self.logger.info( 'Creating Device')
-        self.client.publish("s/us", "100,"+self.deviceName+","+self.deviceType,2).wait_for_publish()
-        self.client.publish("s/us", "110,"+self.serialNumber+","+self.hardwareModel+","+ self.reversion,2)
-        self.client.publish("s/us", "117,"+ self.requiredInterval,2)
-        self.client.publish("s/us", "114,"+ self.operationString,2)
-        self.client.publish("s/us", "118,c8yAgent",2)
-
-        self.logger.info( 'Device created')
-        time.sleep(2)
-        self.initialized = True
-        self.disconnect()
-            
-        if self.initialized == False:
-            self.logger.error( 'Could not register device. Exiting')
-            exit
         self.disconnect()
 
     def createSmartRestTemplates(self):

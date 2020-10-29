@@ -44,7 +44,7 @@ def getserial():
         f.close()
     except:
         cpuserial = "ERROR000000000"
-    c8y.logger.debug('Found Serial: ' + cpuserial)
+
     return cpuserial
 
 def getrevision():
@@ -294,28 +294,32 @@ def runAgent():
     # Enter Device specific values
     stopEvent.clear()
     if c8y.initialized == False:
-        serial = getserial()
-        c8y.logger.info('Not initialized. Try to registering Device with serial: '+ serial)
-        c8y.registerDevice(serial,
-                           config.get('device','name') + '-' +serial ,
-                           config.get('device','devicetype'),
-                           getserial(),
-                           gethardware(),
-                           getrevision(),
-                           config.get('device','operations'),
-                           config.get('device','requiredinterval'),
-                           config.get('device','bootstrap_pwd'))
+        
+        c8y.logger.info('Not initialized. Try to bootstraqp  Device with serial: '+ c8y.clientId)
+        c8y.bootstrap(config.get('device','bootstrap_pwd'))
+
+
     if c8y.initialized == False:
         c8y.logger.info('Could not register. Exiting.')
         exit()
     ## Connect Startup
     connected = c8y.connect(on_message_startup,config.get('device', 'subscribe'))
     c8y.logger.info('Connection Result:' + str(connected))
+    c8y.initDevice(
+                    config.get('device','name') + '-' +c8y.clientId ,
+                    config.get('device','devicetype'),
+                    c8y.clientId,
+                    gethardware(),
+                    getrevision(),
+                    config.get('device','operations'),
+                    config.get('device','requiredinterval'),
+                    )
 
-    if connected == 5:
+    if connected == 5 and not  config.getboolean('device','cert_auth') :
         c8y.reset()
-    if not connected == 0:
-        serviceRestart("Error conncting code: " +str(connected))
+        return
+    # if not connected == 0:
+    #     serviceRestart("Error conncting code: " +str(connected))
 
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
     for _ in range(20):
@@ -356,10 +360,15 @@ config_file = 'pi.properties'
 config = RawConfigParser()
 config.read(config_file)
 
-c8y = C8yMQTT(config.get('device','host'),
+c8y = C8yMQTT(
+            getserial(),
+            config.get('device','host'),
             int(config.get('device','port')),
             config.getboolean('device','tls'),
             config.get('device','cacert'),
+            config.getboolean('device','cert_auth'),
+            config.get('device','client_cert'),
+            config.get('device','client_key'),
             loglevel=logging.getLevelName(config.get('device', 'loglevel')))
 
 try:

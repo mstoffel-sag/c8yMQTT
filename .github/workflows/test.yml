@@ -16,4 +16,4 @@ jobs:
           env:
             c8y_user: ${{ secrets.C8Y_USER }}
           run: |
-            echo "$C8Y_USER"
+            echo "$c8y_user"

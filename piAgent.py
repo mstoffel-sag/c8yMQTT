@@ -293,10 +293,10 @@ def updateConfig(message):
 def runAgent():
     # Enter Device specific values
     stopEvent.clear()
+    c8y.bootstrap(config.get('device','bootstrap_pwd'))
     if c8y.initialized == False:
         
         c8y.logger.info('Not initialized. Try to bootstraqp  Device with serial: '+ c8y.clientId)
-        c8y.bootstrap(config.get('device','bootstrap_pwd'))
 
 
     if c8y.initialized == False:

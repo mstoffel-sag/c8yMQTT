@@ -18,7 +18,6 @@ import io
 import psutil
 import socket
 import json
-from sensehat import Sense
 import requests
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile
@@ -36,6 +35,9 @@ def sendConfiguration():
 def getserial():
     # Extract serial from cpuinfo file can be set static by removing the try catch block
     cpuserial = "0000000000000000"
+    if config.has_option('device', 'serial'):
+        cpuserial = config.get('device','serial')
+        return cpuserial
     try:
         f = open('/proc/cpuinfo', 'r')
         for line in f:
@@ -372,6 +374,7 @@ c8y = C8yMQTT(
             loglevel=logging.getLevelName(config.get('device', 'loglevel')))
 
 try:
+    from sensehat import Sense
     sense = Sense(c8y)
 except Exception as e:
     c8y.logger.error("Sense Hat Error:" + str(e))

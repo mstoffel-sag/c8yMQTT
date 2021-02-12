@@ -190,6 +190,7 @@ class C8yMQTT(object):
                                     tls_version=ssl.PROTOCOL_TLSv1_2,
                                     cert_reqs= ssl.CERT_NONE
                                     )
+                                    
             else:
                 self.client.tls_set(self.cacert) 
                 self.client.username_pw_set(self.tenant+'/'+ self.user, self.password)
@@ -208,9 +209,8 @@ class C8yMQTT(object):
         else:
             self.logger.debug('Using Basic Authentication withe Creds: ' + self.tenant + '/' + self.user + ' pwd: ' + self.password )
         self.logger.info('Connecting to: ' + self.mqtthost + ':' + str(self.mqttport) )
-        self.client.loop_start()
-        self.logger.info(str(self.client))
         self.client.connect(self.mqtthost, self.mqttport,keepalive=60)
+        self.client.loop_start()
         while self.connected == -1:
             self.logger.debug('Waiting for Connect.' + str(self.connected))
             time.sleep(2)
@@ -268,8 +268,9 @@ class C8yMQTT(object):
         self.user ='devicebootstrap' 
         self.password = bootstrap_password
         self.tenant = 'management'
-
+        self.initialized = True
         self.connect(self.__on_messageRegistration,'s/e,s/dcr')
+        self.initialized = False
         while True:
             if self.initialized == False:
                 self.logger.info('Waiting for Credentials')
@@ -296,7 +297,6 @@ class C8yMQTT(object):
             self.logger.debug('config file removed')
         else:
             self.logger.debug('config file already missing')
-        self.serviceRestart("Reset called.")
 
     def disconnect(self):
 

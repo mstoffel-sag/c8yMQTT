@@ -295,18 +295,21 @@ def updateConfig(message):
 def runAgent():
     # Enter Device specific values
     stopEvent.clear()
-    c8y.bootstrap(config.get('device','bootstrap_pwd'))
     if c8y.initialized == False:
-        
-        c8y.logger.info('Not initialized. Try to bootstraqp  Device with serial: '+ c8y.clientId)
-
-
+        c8y.bootstrap(config.get('device','bootstrap_pwd'))
     if c8y.initialized == False:
         c8y.logger.info('Could not register. Exiting.')
         exit()
-    ## Connect Startup
+    ## Connect Agent Startup 
     connected = c8y.connect(on_message_startup,config.get('device', 'subscribe'))
     c8y.logger.info('Connection Result:' + str(connected))
+    if connected == 5 and not  config.getboolean('device','cert_auth'):
+        c8y.reset()
+        serviceRestart("Invalid credentials. Resetting!!!")
+        exit()
+    if connected != 0:
+        serviceRestart("Connection Error: " + str(connected) + " restarting.")
+        exit()
     c8y.initDevice(
                     config.get('device','name') + '-' +c8y.clientId ,
                     config.get('device','devicetype'),
@@ -316,26 +319,25 @@ def runAgent():
                     config.get('device','operations'),
                     config.get('device','requiredinterval'),
                     )
-
-    if connected == 5 and not  config.getboolean('device','cert_auth') :
-        c8y.reset()
-        return
-    # if not connected == 0:
-    #     serviceRestart("Error conncting code: " +str(connected))
-
+    ### Get Pending Operations
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
+
+    ''' Enable for to clear old operations
     for _ in range(20):
         setCommandExecuting('c8y_SoftwareList')
     for _ in range(20):
         setCommandFailed('c8y_SoftwareList','Cleanup')
-        
+    '''    
 
+    ### Check if reboot flag is set
     if config.get('device','reboot') == '1':
         c8y.logger.info('reboot is active. Publishing Acknowledgement..')
         setCommandSuccessfull('c8y_Restart')
         config.set('device','reboot','0')
         with open(config_file, 'w') as configfile:
             config.write(configfile)
+
+    ### Check if config         
     if config.get('device','config_update') == '1':
         c8y.logger.info('Config Update is active. Publishing Acknowledgement..')
         setCommandSuccessfull('c8y_Configuration')
@@ -343,14 +345,18 @@ def runAgent():
         with open(config_file, 'w') as configfile:
             config.write(configfile)
 
+
+    ### Create SmartRest Templat must be deleted in UI if new version form here should be deployd
     c8y.createSmartRestTemplates()
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
     c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
-    time.sleep(2)
+
     sendConfiguration()
     time.sleep(2)
     c8y.disconnect()
     time.sleep(2)
+
+    ### Operational connection
     c8y.connect(on_message_default,config.get('device', 'subscribe'))
     c8y.logger.info('Starting sendMeasurements.')
     sendThread = Thread(target=sendMeasurements, args=(stopEvent, int(config.get('device','sendinterval'))))

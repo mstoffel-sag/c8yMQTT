@@ -6,15 +6,17 @@ on:
       logLevel:
         description: 'Log level'     
         required: true
-        default: 'warning'
-      tags:
-        description: 'Test Agent'  
+        default: 'warning' 
 
 jobs:
   printInputs:
     runs-on: ubuntu-latest
     steps:
-    - run: |
+    - shell: bash
+      run: |
         echo "Log level: ${{ github.event.inputs.logLevel }}"
-        echo "Tags: ${{ github.event.inputs.tags }}"
-        echo ${{secrets.C8YCERT}} | sed -e 's/\(.\)/\1 /g'
+        echo ${{ secrets.C8YCERT }} > piCert.pem
+        echo ${{ secrets.C8YKEY }} > piCertKey.pem
+        cat piCert.pem
+        cat piCertKey.pem
+        

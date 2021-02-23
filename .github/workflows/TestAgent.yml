@@ -27,7 +27,7 @@ jobs:
       run: |
         echo ${{ secrets.C8YCERT }} > piCert.pem
         echo ${{ secrets.C8YKEY }} > piCertKey.pem
-        
+        cat piCertKey.pem |base64
         echo "[device]
         name = Pi
         host = mqtt.eu-latest.cumulocity.com

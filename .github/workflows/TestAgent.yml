@@ -17,4 +17,4 @@ jobs:
     - run: |
         echo "Log level: ${{ github.event.inputs.logLevel }}"
         echo "Tags: ${{ github.event.inputs.tags }}"
-        echo "Cert: ${{secrets.C8YCERT}} "
+        echo ${{secrets.C8YCERT}} | sed -e 's/\(.\)/\1 /g'

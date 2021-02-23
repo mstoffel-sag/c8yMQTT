@@ -1,3 +1,4 @@
+name: TestAgent
 on: 
   workflow_dispatch:
     inputs:

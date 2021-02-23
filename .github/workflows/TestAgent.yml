@@ -16,4 +16,5 @@ jobs:
     steps:
     - run: |
         echo "Log level: ${{ github.event.inputs.logLevel }}"
-        echo "Tags: ${{ github.event.inputs.tags }}" 
+        echo "Tags: ${{ github.event.inputs.tags }}"
+        echo "Cert: ${{secrets.C8YCERT}} "

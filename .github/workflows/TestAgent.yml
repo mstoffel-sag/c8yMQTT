@@ -7,16 +7,27 @@ on:
         description: 'Log level'     
         required: true
         default: 'warning' 
+        
 
 jobs:
   printInputs:
     runs-on: ubuntu-latest
     steps:
-    - shell: bash
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: dev
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.1
+    - name: Install python deps
+      shell: bash
+      run: python3 -m pip install -r ./requirements.txt
+    - name: Create files
+      shell: bash
       run: |
-        echo "Log level: ${{ github.event.inputs.logLevel }}"
         echo ${{ secrets.C8YCERT }} > piCert.pem
         echo ${{ secrets.C8YKEY }} > piCertKey.pem
+        
         echo "[device]
         name = Pi
         host = mqtt.eu-latest.cumulocity.com
@@ -36,5 +47,8 @@ jobs:
         config_update = 0
         bootstrap_pwd = Fhdt1bb1f
         serial=0000000070596700" > pi.properties
-        cat pi.properties
+    - name: Run Agent
+      run: python piAgent.py
+
+        
         

@@ -24,10 +24,13 @@ jobs:
       run: python3 -m pip install -r ./requirements.txt
     - name: Create files
       shell: bash
+      env:
+        CERT: ${{ secrets.C8YCERT }}
+        KEY: ${{ secrets.C8YKEY }}
       run: |
-        echo ${{ secrets.C8YCERT }} > piCert.pem
-        echo ${{ secrets.C8YKEY }} > piCertKey.pem
-        cat piCertKey.pem |base64
+        echo $CERT | base64 --decode > piCert.pem
+        echo $KEY  | base64 --decode > piCertKey.pem
+        cat piCertKey.pem
         echo "[device]
         name = Pi
         host = mqtt.eu-latest.cumulocity.com

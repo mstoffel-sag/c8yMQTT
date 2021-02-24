@@ -1,4 +1,4 @@
-name: 'TestAgent'
+name: 'TestBootStrap'
 
 on: 
   workflow_dispatch:

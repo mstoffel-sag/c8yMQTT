@@ -28,6 +28,9 @@ jobs:
         CERT: ${{ secrets.C8YCERT }}
         KEY: ${{ secrets.C8YKEY }}
       run: |
+        ls -la /etc/ssl/certs/ca-certificates.crt
+        echo $CERT | wc -l
+        echo $CERT
         echo $CERT | base64 --decode > piCert.pem
         echo $KEY  | base64 --decode > piCertKey.pem
         cat piCertKey.pem

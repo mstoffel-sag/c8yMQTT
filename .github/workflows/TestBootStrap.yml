@@ -28,6 +28,7 @@ jobs:
         CERT: ${{ secrets.devTest.C8YCERT }}
         KEY: ${{ secrets.devTest.C8YKEY }}
       run: |
+        rm -f c8y.properties
         echo "[device]
         name = Pi
         host = mqtt.eu-latest.cumulocity.com

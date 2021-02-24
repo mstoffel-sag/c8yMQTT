@@ -25,8 +25,8 @@ jobs:
     - name: Create files
       shell: bash
       env:
-        CERT: ${{ devTest.secrets.C8YCERT }}
-        KEY: ${{ devTest.secrets.C8YKEY }}
+        CERT: ${{ secrets.devTest.C8YCERT }}
+        KEY: ${{ secrets.devTest.C8YKEY }}
       run: |
         ls -la /etc/ssl/certs/ca-certificates.crt
         echo $CERT | wc -l

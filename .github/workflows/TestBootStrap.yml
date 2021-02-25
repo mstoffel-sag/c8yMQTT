@@ -3,10 +3,10 @@ name: 'TestBootStrap'
 on: 
   workflow_dispatch:
     inputs:
-      logLevel:
-        description: 'Log level'     
-        required: true
-        default: 'warning' 
+      deviceId:
+        description: 'External Id of the Device'     
+        required: false
+        default: 'myDevice' 
         
 
 jobs:
@@ -25,9 +25,15 @@ jobs:
     - name: Create files
       shell: bash
       env:
-        CERT: ${{ secrets.devTest.C8YCERT }}
-        KEY: ${{ secrets.devTest.C8YKEY }}
+        C8Y_CERT: ${{ secrets.devTest.C8Y_CERT }}
+        C8Y_KEY: ${{ secrets.devTest.C8_YKEY }}
+        C8Y_USER: ${{ secrets.C8Y_USER }}
+        C8Y_TENANT: ${{ secrets.TENANT }}
+        C8Y_URL: ${{ secrets.C8Y_URL }}
+        C8Y_PWD: ${{ secrets.C8Y_PWD }}
       run: |
+        echo ${{ secrets.devTest.C8Y_CERT }} > piCert.pem
+        echo ${{ secrets.devTest.C8Y_KEY }} > piCertKey.pem
         rm -f c8y.properties
         echo "[device]
         name = Pi
@@ -47,11 +53,11 @@ jobs:
         reboot = 0
         config_update = 0
         bootstrap_pwd = Fhdt1bb1f
-        serial=0000000070596700" > pi.properties
+        serial=${{github.event.inputs.deviceId}}" > pi.properties
     - name: CleanUp
       run: |
-        python testUtils.py delete_device 0000000070596700
-        python testUtils.py create_registration 0000000070596700
+        python testUtils.py delete_device ${{github.event.inputs.deviceId}}
+        python testUtils.py create_registration ${{github.event.inputs.deviceId}}
         
     - name: Run Agent
       run: python piAgent.py

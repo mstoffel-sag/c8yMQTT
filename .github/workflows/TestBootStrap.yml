@@ -48,6 +48,11 @@ jobs:
         config_update = 0
         bootstrap_pwd = Fhdt1bb1f
         serial=0000000070596700" > pi.properties
+    - name: CleanUp
+      run: |
+        python testUtils.py delete_device 0000000070596700
+        python testUtils.py create_registration 0000000070596700
+        
     - name: Run Agent
       run: python piAgent.py
 

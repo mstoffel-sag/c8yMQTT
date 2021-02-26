@@ -34,7 +34,7 @@ jobs:
         echo ${{ secrets.C8Y_CERT }} > piCert.pem
         echo ${{ secrets.C8Y_KEY }} > piCertKey.pem
     - name: Create config
-      run: > 
+      run: | 
         echo "[device]
         name = Pi
         host = mqtt.eu-latest.cumulocity.com

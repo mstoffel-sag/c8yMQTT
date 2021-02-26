@@ -13,6 +13,12 @@ jobs:
   printInputs:
     runs-on: ubuntu-latest
     steps:
+    - name: Set Env
+      env:
+        C8Y_USER: ${{ secrets.C8Y_USER }}
+        C8Y_TENANT: ${{ secrets.C8Y_TENANT }}
+        C8Y_URL: ${{ secrets.C8Y_URL }}
+        C8Y_PWD: ${{ secrets.C8Y_PWD }}
     - name: Checkout
       uses: actions/checkout@v2
       with:
@@ -21,12 +27,7 @@ jobs:
       uses: actions/setup-python@v2.2.1
     - name: Install python deps
       run: python3 -m pip install -r ./requirements.txt
-    - name: Set Env
-      env:
-        C8Y_USER: ${{ secrets.C8Y_USER }}
-        C8Y_TENANT: ${{ secrets.C8Y_TENANT }}
-        C8Y_URL: ${{ secrets.C8Y_URL }}
-        C8Y_PWD: ${{ secrets.C8Y_PWD }}
+
    
         
         

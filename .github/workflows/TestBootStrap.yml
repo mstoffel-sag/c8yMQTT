@@ -61,8 +61,8 @@ jobs:
     - name: CleanUp
       run: |
         ls -la
-        python testUtils.py delete_device ${{github.event.inputs.deviceId}}
-        python testUtils.py create_registration ${{github.event.inputs.deviceId}}
+        python .github/workflows/testUtils.py delete_device ${{github.event.inputs.deviceId}}
+        python .github/workflows/testUtils.py create_registration ${{github.event.inputs.deviceId}}
         
     - name: Run Agent
       run: python piAgent.py

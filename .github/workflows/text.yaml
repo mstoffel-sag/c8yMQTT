@@ -1,4 +1,4 @@
-name: 'TestBootStrap'
+name: 'TestAgent'
 
 on: 
   workflow_dispatch:
@@ -7,6 +7,9 @@ on:
         description: 'External Id of the Device'     
         required: false
         default: 'myDevice' 
+      authMethod:
+        description: "Cert of Basic"
+        required: false
         
 
 jobs:
@@ -22,19 +25,19 @@ jobs:
     - name: Install python deps
       shell: bash
       run: python3 -m pip install -r ./requirements.txt
-    - name: Create files
+    - name: Build Env
       shell: bash
       env:
-        C8Y_CERT: ${{ secrets.devTest.C8Y_CERT }}
-        C8Y_KEY: ${{ secrets.devTest.C8_YKEY }}
         C8Y_USER: ${{ secrets.C8Y_USER }}
         C8Y_TENANT: ${{ secrets.TENANT }}
         C8Y_URL: ${{ secrets.C8Y_URL }}
         C8Y_PWD: ${{ secrets.C8Y_PWD }}
-      run: >
+    - name: Create Certs
+      run: |
         echo ${{ secrets.devTest.C8Y_CERT }} > piCert.pem
         echo ${{ secrets.devTest.C8Y_KEY }} > piCertKey.pem
-        rm -f c8y.properties
+    - name: Create Config
+      run: >
         echo "[device]
         name = Pi
         host = mqtt.eu-latest.cumulocity.com

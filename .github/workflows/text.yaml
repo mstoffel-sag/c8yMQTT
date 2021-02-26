@@ -31,7 +31,7 @@ jobs:
         C8Y_TENANT: ${{ secrets.TENANT }}
         C8Y_URL: ${{ secrets.C8Y_URL }}
         C8Y_PWD: ${{ secrets.C8Y_PWD }}
-      run: |
+      run: >
         echo ${{ secrets.devTest.C8Y_CERT }} > piCert.pem
         echo ${{ secrets.devTest.C8Y_KEY }} > piCertKey.pem
         rm -f c8y.properties

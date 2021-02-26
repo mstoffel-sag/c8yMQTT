@@ -1,0 +1,70 @@
+name: 'TestBootStrap'
+
+on: 
+  workflow_dispatch:
+    inputs:
+      deviceId:
+        description: 'External Id of the Device'     
+        required: false
+        default: 'myDevice' 
+        
+
+jobs:
+  printInputs:
+    env:
+        C8Y_USER: ${{ secrets.C8Y_USER }}
+        C8Y_TENANT: ${{ secrets.C8Y_TENANT }}
+        C8Y_URL: ${{ secrets.C8Y_URL }}
+        C8Y_PWD: ${{ secrets.C8Y_PWD }}
+        C8Y_CERT: ${{ secrets.C8Y_CERT }}
+        C8Y_KEY: ${{ secrets.C8Y_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: dev
+        
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.1
+      
+    - name: Install python deps
+      run: python3 -m pip install -r ./requirements.txt
+
+    - name: Create Certs
+      run: |
+        echo $C8Y_CERT > piCert.pem
+        echo $C8Y_KEY > piCertKey.pem
+        
+    - name: Create config
+      run: > 
+        echo "[device]
+        name = Pi
+        host = mqtt.eu-latest.cumulocity.com
+        port = 8883
+        tls = true
+        cert_auth = false
+        client_cert = piCert.pem
+        client_key = piCertKey.pem
+        cacert = /etc/ssl/certs/ca-certificates.crt
+        operations = c8y_Restart,c8y_Message,c8y_Configuration,c8y_SendConfiguration,c8y_RemoteAccessConnect,c8y_SoftwareList
+        subscribe = s/ds,s/dc/pi,s/e,s/dt
+        devicetype = c8y_Pi
+        sendinterval = 5
+        requiredinterval = 10
+        loglevel = DEBUG
+        reboot = 0
+        config_update = 0
+        bootstrap_pwd = Fhdt1bb1f
+        serial=${{github.event.inputs.deviceId}}" > pi.propertie
+    
+    - name: CleanUp
+      run: |
+        ls -la
+        python testUtils.py delete_device ${{github.event.inputs.deviceId}}
+        python testUtils.py create_registration ${{github.event.inputs.deviceId}}
+        
+    - name: Run Agent
+      run: python piAgent.py
+        
+        

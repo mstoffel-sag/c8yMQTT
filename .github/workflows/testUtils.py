@@ -20,7 +20,7 @@ def delete_device (externalId):
         r = requests.delete(c8y_url + '/inventory/managedObjects/'+ internal_id,auth=HTTPBasicAuth(c8y_user, c8y_pwd))
         print("Delete Device: " + str(r.status_code))
     except:
-        print 'Error fetching id'
+        print ('Error fetching id')
 
 
 def accept_registration(externalId):

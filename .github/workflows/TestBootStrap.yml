@@ -16,6 +16,8 @@ jobs:
         C8Y_TENANT: ${{ secrets.C8Y_TENANT }}
         C8Y_URL: ${{ secrets.C8Y_URL }}
         C8Y_PWD: ${{ secrets.C8Y_PWD }}
+        C8Y_CERT: ${{ secrets.C8Y_CERT }}
+        C8Y_KEY: ${{ secrets.C8Y_KEY }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -31,8 +33,8 @@ jobs:
 
     - name: Create Certs
       run: |
-        echo ${{ secrets.C8Y_CERT }} > piCert.pem
-        echo ${{ secrets.C8Y_KEY }} > piCertKey.pem
+        echo $C8Y_CERT > piCert.pem
+        echo $C8Y_KEY > piCertKey.pem
         
     - name: Create config
       run: > 

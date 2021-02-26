@@ -65,6 +65,6 @@ jobs:
         python .github/workflows/testUtils.py create_registration ${{github.event.inputs.deviceId}}
         
     - name: Run Agent
-      run: python piAgent.py
+      run: timeout 120 python piAgent.py
         
         

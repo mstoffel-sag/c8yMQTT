@@ -26,7 +26,7 @@ jobs:
       shell: bash
       env:
         C8Y_CERT: ${{ secrets.C8Y_CERT }}
-        C8Y_KEY: ${{ secrets.C8Y_YKEY }}
+        C8Y_KEY: ${{ secrets.C8Y_KEY }}
         C8Y_USER: ${{ secrets.C8Y_USER }}
         C8Y_TENANT: ${{ secrets.C8Y_TENANT }}
         C8Y_URL: ${{ secrets.C8Y_URL }}

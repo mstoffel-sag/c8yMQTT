@@ -25,15 +25,15 @@ jobs:
     - name: Create files
       shell: bash
       env:
-        C8Y_CERT: ${{ secrets.devTest.C8Y_CERT }}
-        C8Y_KEY: ${{ secrets.devTest.C8_YKEY }}
+        C8Y_CERT: ${{ secrets.C8Y_CERT }}
+        C8Y_KEY: ${{ secrets.C8Y_YKEY }}
         C8Y_USER: ${{ secrets.C8Y_USER }}
-        C8Y_TENANT: ${{ secrets.TENANT }}
+        C8Y_TENANT: ${{ secrets.C8Y_TENANT }}
         C8Y_URL: ${{ secrets.C8Y_URL }}
         C8Y_PWD: ${{ secrets.C8Y_PWD }}
       run: |
-        echo ${{ secrets.devTest.C8Y_CERT }} > piCert.pem
-        echo ${{ secrets.devTest.C8Y_KEY }} > piCertKey.pem
+        echo ${{ secrets.C8Y_CERT }} > piCert.pem
+        echo ${{ secrets.C8Y_KEY }} > piCertKey.pem
         rm -f c8y.properties
         echo "[device]
         name = Pi
@@ -56,8 +56,8 @@ jobs:
         serial=${{github.event.inputs.deviceId}}" > pi.properties
     - name: CleanUp
       run: |
-        python testUtils.py delete_device ${{github.event.inputs.deviceId}}
-        python testUtils.py create_registration ${{github.event.inputs.deviceId}}
+        python .github/workflows/testUtils.py delete_device ${{github.event.inputs.deviceId}}
+        python .github/workflows/testUtils.py create_registration ${{github.event.inputs.deviceId}}
         
     - name: Run Agent
       run: python piAgent.py

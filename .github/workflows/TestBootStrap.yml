@@ -54,6 +54,7 @@ jobs:
         config_update = 0
         bootstrap_pwd = Fhdt1bb1f
         serial=${{github.event.inputs.deviceId}}" > pi.properties
+        ls -la
     - name: CleanUp
       run: |
         python .github/workflows/testUtils.py delete_device ${{github.event.inputs.deviceId}}

@@ -3,11 +3,12 @@ import shlex
 
 
 class Sense:
-    def __init__(self, c8y):
+    def __init__(self, c8y,serviceRestart):
         self.sense = SenseHat()
         self.c8y = c8y
         self.reset = 0
         self.resetMax = 3
+        self.serviceRestart = serviceRestart
 
     def send(self):
         self.c8y.logger.debug("Sensehat Sending called: ")
@@ -77,4 +78,4 @@ class Sense:
                 if self.reset >= self.resetMax:
                     self.c8y.logger.info('Resetting c8y.properties initializing re-register device....')
                     self.c8y.reset()
-                    c8y.serviceRestart('Joystick reset')
+                    self.serviceRestart('Joystick reset')

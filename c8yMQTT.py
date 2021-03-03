@@ -11,7 +11,7 @@ import sys
 import re
 import paho.mqtt.client as mqtt
 import smartrest
-
+import time,sched
 
 class C8yMQTT(object):
     '''
@@ -87,6 +87,7 @@ class C8yMQTT(object):
         else:
             self.logger.info('Using certificate authentication. Successfully initialized.')
             self.initialized = True
+            self.eventScheduler = sched.scheduler(time.time, time.sleep)
 
 
 
@@ -126,6 +127,8 @@ class C8yMQTT(object):
     def subscribe_topics(self,topics,qos=0):
         self.topic_ack = []
         topics = topics.split(',')
+        if self.cert_auth:
+            topics.append('s/dat')
         self.logger.info("topics to subscribe: " +str(topics))
    
         for t in topics:
@@ -141,7 +144,9 @@ class C8yMQTT(object):
             except Exception as e:
                 self.logger.error("Exception on subscribe"+str(e))
 
-
+    def refresh_token(self):
+        self.logger.debug("Refreshing Token")
+        self.client.publish("s/uat", "",2)
 
     def on_subscribe(self,client, obj, mid, granted_qos):
         
@@ -166,6 +171,9 @@ class C8yMQTT(object):
         if rc!=0:
             self.logger.error("Disconnected! Try to reconnect: " +str(rc))
             self.client.reconnect()
+        if self.cert_auth:
+            self.eventScheduler.cancel(self.refresher)
+        
 
     def connect(self,on_message,topics):
         self.connected=-1
@@ -223,6 +231,9 @@ class C8yMQTT(object):
         if not self.check_subs():
             self.logger.error("Could not subscribe to: " + topics)
             return 17
+        if self.cert_auth:
+            self.refresher = self.eventScheduler.enter(3,1,self.refresh_token)
+            self.eventScheduler.run()
         return self.connected
 
     def initDevice(self,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):
@@ -288,7 +299,7 @@ class C8yMQTT(object):
     
     def reset(self):
         self.initialized = False
-        self.logger.info('reseting')
+        self.logger.info('resetting')
         self.logger.debug('loop stopped')
         self.disconnect()
         self.logger.debug('client disconnected')

@@ -25,6 +25,8 @@ from device_proxy import DeviceProxy
 import concurrent.futures
 
 
+
+
 def sendConfiguration():
     with open(config_file, 'r') as configFile:
             configString=configFile.read()
@@ -127,6 +129,10 @@ def on_message_default(client, obj, msg):
     message = msg.payload.decode('utf-8')
     c8y.logger.info("Message Received: " + msg.topic + " " + str(msg.qos) + " " + message)
 
+    if message.startswith('71'):
+        fields = message.split(",")
+        c8y.token = fields[1]
+        c8y.logger.debug('New Token:' + str(c8y.token))
     if message.startswith('510'):
         Thread(target=restart).start()
 
@@ -381,7 +387,7 @@ c8y = C8yMQTT(
 
 try:
     from sensehat import Sense
-    sense = Sense(c8y)
+    sense = Sense(c8y,serviceRestart)
 except Exception as e:
     c8y.logger.error("Sense Hat Error:" + str(e))
 try:

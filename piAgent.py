@@ -173,7 +173,7 @@ def on_message_default(client, obj, msg):
         fields = message.split(",")
         name = fields[2]
         version = fields[3]
-        url = fields[4]
+        url = fields[7]
         c8y.logger.info('Software Update:' + name + ' Version: ' + version)
         Thread(target=softwareUpdate,args=(name,version,url,)).start()
 
@@ -213,10 +213,14 @@ def getRelease():
 def softwareUpdate(name,version,url):
     try:
         # Download new firmware
-        r = requests.get(url, auth=HTTPBasicAuth(c8y.tenant+'/'+ c8y.user, c8y.password))
+        if c8y.cert_auth:
+            header = {'Authorization': 'Bearer ' + c8y.token}
+            r = requests.get(url, header) 
+        else:
+            r = requests.get(url, auth=HTTPBasicAuth(c8y.tenant+'/'+ c8y.user, c8y.password))
         setCommandExecuting('c8y_SoftwareList')
         c8y.logger.info('Download result: ' + str(r.status_code))
-        
+
         ## write downloaded new software file to disk
         newSoftwareFile = './software_download/release-' + name +'-' + version + '.zip'
         createDir(newSoftwareFile)

@@ -40,7 +40,6 @@ class C8yMQTT(object):
         '''
         self.refresh_token_interval = 60
         self.stop_event = threading.Event()
-        self.stop_event.clear()
         self.clientId = clientId
         self.ackpub = -1
         self.lastpub = -1
@@ -96,12 +95,6 @@ class C8yMQTT(object):
     def on_connect(self,client, userdata, flags, rc):
         self.logger.info("on_connect result: " + str(rc))
         self.connected=rc
-        if self.cert_auth:
-            self.logger.info("Starting refresh token thread ")
-            refresh_token_thread = Thread(target=self.refresh_token)
-            refresh_token_thread.start()
-   
-
 
     def check_subs(self):
         wcount=0
@@ -150,15 +143,13 @@ class C8yMQTT(object):
                 self.logger.error("Exception on subscribe"+str(e))
 
     def refresh_token(self):
+        self.stop_event.clear()
         while True:
             self.logger.info("Refreshing Token")
             self.client.publish("s/uat", "",2)
             if self.stop_event.wait(timeout=self.refresh_token_interval):
                 self.logger.info("Exit Refreshing Token Thread")
                 break
-
-            
-        self.logger.info("Refresh token thread stopped")
 
     def on_subscribe(self,client, obj, mid, granted_qos):
         
@@ -183,9 +174,7 @@ class C8yMQTT(object):
         if rc!=0:
             self.logger.error("Disconnected! Try to reconnect: " +str(rc))
             self.client.reconnect()
-        if self.cert_auth:
-            self.logger.error("Stopping refresh token thread")
-            self.stop_event.set
+
         
 
     def connect(self,on_message,topics):
@@ -244,6 +233,11 @@ class C8yMQTT(object):
         if not self.check_subs():
             self.logger.error("Could not subscribe to: " + topics)
             return 17
+        if self.cert_auth:
+            self.logger.info("Starting refresh token thread ")
+            refresh_token_thread = Thread(target=self.refresh_token)
+            refresh_token_thread.start()
+
         
 
         return self.connected
@@ -324,6 +318,9 @@ class C8yMQTT(object):
     def disconnect(self):
 
         self.logger.info('Disconnect')
+        if self.cert_auth:
+            self.logger.info("Stopping refresh token thread")
+            self.stop_event.set()
         self.client.disconnect()
         self.client.loop_stop()
         self.connected=False

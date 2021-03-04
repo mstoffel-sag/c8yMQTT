@@ -209,45 +209,48 @@ def getRelease():
 
 def softwareUpdate(name,version,url):
     try:
-        # Download new firmware
-        if c8y.cert_auth:
-            header = {'Authorization': 'Bearer ' + c8y.token}
-            r = requests.get(url, header) 
-        else:
-            r = requests.get(url, auth=HTTPBasicAuth(c8y.tenant+'/'+ c8y.user, c8y.password))
-        setCommandExecuting('c8y_SoftwareList')
-        c8y.logger.info('Download result: ' + str(r.status_code))
+        if name.startswith(piAgent):
+            # Download new firmware
+            if c8y.cert_auth:
+                header = {'Authorization': 'Bearer ' + c8y.token}
+                r = requests.get(url, headers=header) 
+            else:
+                r = requests.get(url, auth=HTTPBasicAuth(c8y.tenant+'/'+ c8y.user, c8y.password))
+            setCommandExecuting('c8y_SoftwareList')
+            c8y.logger.info('Download result: ' + str(r.status_code))
 
-        ## write downloaded new software file to disk
-        newSoftwareFile = './software_download/release-' + name +'-' + version + '.zip'
-        createDir(newSoftwareFile)
-        with open(newSoftwareFile, 'wb') as f:
-            f.write(r.content)
+            ## write downloaded new software file to disk
+            newSoftwareFile = './software_download/release-' + name +'-' + version + '.zip'
+            createDir(newSoftwareFile)
+            with open(newSoftwareFile, 'wb') as f:
+                f.write(r.content)
 
-        # create backup of old version
-        oldRelease = getRelease()
-        
-        c8y.logger.info('OldRelease: ' + str(oldRelease))
-        backupFile = './backup/backup-' + oldRelease+ '.zip'
-        c8y.logger.info('BackupFile: ' + str(backupFile))
-        createDir(backupFile)
-        exclude = ('.','backup','c8yAgent.log' , 'zip')
-        with ZipFile(backupFile, 'w') as backup:
-            files = [f for f in os.listdir('.') if os.path.isfile(f)]
-            for file in files:
-                if not file.startswith (exclude) and not file.endswith(exclude):
-                    c8y.logger.info('Adding to backup: ' + str(file))
-                    backup.write(file)
+            # create backup of old version
+            oldRelease = getRelease()
+            
+            c8y.logger.info('OldRelease: ' + str(oldRelease))
+            backupFile = './backup/backup-' + oldRelease+ '.zip'
+            c8y.logger.info('BackupFile: ' + str(backupFile))
+            createDir(backupFile)
+            exclude = ('.','backup','c8yAgent.log' , 'zip')
+            with ZipFile(backupFile, 'w') as backup:
+                files = [f for f in os.listdir('.') if os.path.isfile(f)]
+                for file in files:
+                    if not file.startswith (exclude) and not file.endswith(exclude):
+                        c8y.logger.info('Adding to backup: ' + str(file))
+                        backup.write(file)
 
-        # install new release
-        with ZipFile(newSoftwareFile, 'r') as newrelease:
-            newrelease.extractall('.')
-        
-        # Write new version to release file
-        with open('release','wt') as releasefile:
-            releasefile.write(version)
-        setCommandSuccessfull('c8y_SoftwareList')
-        serviceRestart('New Software')
+            # install new release
+            with ZipFile(newSoftwareFile, 'r') as newrelease:
+                newrelease.extractall('.')
+            
+            # Write new version to release file
+            with open('release','wt') as releasefile:
+                releasefile.write(version)
+            setCommandSuccessfull('c8y_SoftwareList')
+            serviceRestart('New Software')
+         else:
+            c8y.logger.info('SoftwareUpdate ignoring unsuported Software ' + str(e) )
     except Exception as e:
         c8y.logger.info('SoftwareUpdateError: ' + str(e) )
         setCommandFailed('c8y_SoftwareList')

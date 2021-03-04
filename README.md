@@ -33,7 +33,7 @@ The class C8yMQTT lets you connect your device to the Cumulocity Cloud using mqt
 
 ## piAgent.py Module
 
-To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with device specific functionality (Send Measurements etc.). piAgent.py provides a sample implementation for the Raspberry PI 3.
+To implement a Cumulocity Device Agent you have to cater the C8yMQTT class with device specific functionality (Send Measurements etc.). piAgent.py provides a sample implementation for the Raspberry PI 3. Though the piAgent.py module will look for a sense hat it will work also without it. Meaning you can also run the agent on all linux distributions that can fulfill the python requirements.
 
 ## Prerequisites for Raspbian distribution
 
@@ -67,6 +67,9 @@ the pi.properties file holds device specific parameters.
 * host -> Mqtt host (works for cumulocity.com do not change except you running on another instance of Cumulocity )
 * port -> Mqtt port it'll be set either to 1883 for tcp or to 8883 for  Transport Encryption via TLS
 * tls -> Boolean which indicates whether to use tls or not. Must match the port settings
+* cert_auth -> When enabled certificate authentication is used
+* client_cert ->  Client cert in pem format including the whole certificate chain
+* client_key -> Client private key in pem without password applied 
 * cacert -> path to a certificate (pem format) that holds all trusted root certificates
 * operations -> all supported operations of the agent which are implemented in an agent module
 * subscribe -> Topics the agent will subscribe to.
@@ -77,13 +80,19 @@ the pi.properties file holds device specific parameters.
 * reboot -> will be set by the restart device command to prevent from a infinite loop.
 * config_update -> same as reboot
 * bootstrap_pwd -> needed for auto registration process
+* serial -> optional, when configured the agent does not try to fetch the externalId from the PI /proc/cpuinfo but usese that value instead. Remove completely to use the cpu serial of a PI
 
 ### Device Registration
 
-To autoregister your pi got to In Cumulocity -> Device Management create a new Device Registration entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. The c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set (default).
+To autoregister your pi go to Cumulocity -> Device Management. Create a new Device Registration by entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. After registration the c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set (default).
 
 !!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY REGISTERED WITH IT'S SERIAL NUMBER!!!
 If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
+
+### Certificate Authentication
+
+When in pi.properties the cert_auth flag is enabled and the corresponding root cert is active in the tenant and  auto registration is enabled for the root cert ->  The device is automatically created in the platform. You have to make sure that the externalId of the device (e.g. /cat/proc/cpuinfo) matches the common name of the client_cert.
+If cert_auth is enabled the agent also pulls the bearere token from the platfrom to use it in rest requests. This is implementedd in the software download feature.
 
 __c8y.properties__  
 After successful registration c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
@@ -94,7 +103,7 @@ tenant =
 password =   
 clientid =
 
-If not present the initialized variable is false and the registerDevice method can be used to fetch new credentials. 
+If not present the initialized variable is false and the bootstrap method method of c8yMQTT module can be used to fetch new credentials. 
 
 ### Build in functions
 
@@ -104,7 +113,7 @@ The Agent supports the following functions:
 * Restart -> The Raspberry PI an be rebooted via the restart command.
 * Send Message to the Device -> Via the Send Message Widget in the Cockpit Application. Text can be send to the PI and will be displayed on the SensHats LED  Matrix
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
-* Joystick -> Events are created on pressing. __If the joystick is pressed three times__ the PI will start a new registration process. This comes in handy if you have to move it to another tenant.
+* Joystick -> Events are created on pressing. __If the joystick is pressed three times__ the PI will start a new registration process. This comes in handy if you have to move it to another tenant (works only if you dont use cert_auth).
 * Remote Access (thx Stefan W.)-> If the remote access microservice is subscribed to the cumulocity tenant and the user has remote access rights remote access can be configured within device management of the agents device
 * !!!Experimental!!! Software Update. You can create a zip file of the repo content deploy that to the cumulocity software repository. You should now be able to execute a software update in device management.
 

@@ -103,22 +103,19 @@ def sendMemory():
 def sendMeasurements(stopEvent, interval):
     c8y.logger.info('Starting sendMeasurement with interval: '+ str(interval))
     try:
-        sendCPULoad()
-        sendMemory()
-        try:
-            sense.send()
-        except Exception:
-            c8y.logger.info("No sense hat found omitting.")
-        c8y.logger.info('sendMeasurements called')
-        while not stopEvent.wait(interval):
-            sendCPULoad()
-            sendMemory()
+        while True:
+            c8y.logger.info('sendMeasurements called')
+
             try:
                 sense.send()
             except Exception:
                 c8y.logger.info("No sense hat found omitting.")
-            c8y.logger.info('sendMeasurements called')
-        c8y.logger.info('sendMeasurement was stopped..')
+            
+            sendCPULoad()
+            sendMemory()
+            if stopEvent.wait(timeout=interval):
+                c8y.logger.info('sendMeasurement was stopped..')
+                break
     except (KeyboardInterrupt, SystemExit):
         c8y.logger.info('Exiting sendMeasurement...')
         sys.exit()
@@ -332,12 +329,12 @@ def runAgent():
     ### Get Pending Operations
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
 
-    ''' Enable for to clear old operations
-    for _ in range(20):
+    ### Clean up old Software List operations
+    for _ in range(5):
         setCommandExecuting('c8y_SoftwareList')
-    for _ in range(20):
+    for _ in range(25):
         setCommandFailed('c8y_SoftwareList','Cleanup')
-    '''    
+
 
     ### Check if reboot flag is set
     if config.get('device','reboot') == '1':
@@ -362,9 +359,9 @@ def runAgent():
     c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
 
     sendConfiguration()
-    time.sleep(2)
+    time.sleep(1)
     c8y.disconnect()
-    time.sleep(2)
+    time.sleep(1)
 
     ### Operational connection
     c8y.connect(on_message_default,config.get('device', 'subscribe'))
@@ -374,10 +371,14 @@ def runAgent():
 
 
 stopEvent = threading.Event()
+
+### Reading Config file
 config_file = 'pi.properties'
 config = RawConfigParser()
 config.read(config_file)
 
+
+### Initialize MQTT Module
 c8y = C8yMQTT(
             getserial(),
             config.get('device','host'),
@@ -390,6 +391,7 @@ c8y = C8yMQTT(
             loglevel=logging.getLevelName(config.get('device', 'loglevel')))
 
 try:
+    ### Try to load sensehat extension
     from sensehat import Sense
     sense = Sense(c8y,serviceRestart)
 except Exception as e:

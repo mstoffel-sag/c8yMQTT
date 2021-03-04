@@ -11,7 +11,9 @@ import sys
 import re
 import paho.mqtt.client as mqtt
 import smartrest
-import time,sched
+from threading import Thread
+import threading
+import time
 
 class C8yMQTT(object):
     '''
@@ -36,6 +38,9 @@ class C8yMQTT(object):
         Connect to configured tenant
         do device onboarding if not already registered
         '''
+        self.refresh_token_interval = 60
+        self.stop_event = threading.Event()
+        self.stop_event.clear()
         self.clientId = clientId
         self.ackpub = -1
         self.lastpub = -1
@@ -87,14 +92,14 @@ class C8yMQTT(object):
         else:
             self.logger.info('Using certificate authentication. Successfully initialized.')
             self.initialized = True
-            self.eventScheduler = sched.scheduler(time.time, time.sleep)
-
-
-
 
     def on_connect(self,client, userdata, flags, rc):
         self.logger.info("on_connect result: " + str(rc))
         self.connected=rc
+        if self.cert_auth:
+            self.logger.info("Starting refresh token thread ")
+            refresh_token_thread = Thread(target=self.refresh_token)
+            refresh_token_thread.start()
    
 
 
@@ -145,8 +150,15 @@ class C8yMQTT(object):
                 self.logger.error("Exception on subscribe"+str(e))
 
     def refresh_token(self):
-        self.logger.debug("Refreshing Token")
-        self.client.publish("s/uat", "",2)
+        while True:
+            self.logger.info("Refreshing Token")
+            self.client.publish("s/uat", "",2)
+            if self.stop_event.wait(timeout=self.refresh_token_interval):
+                self.logger.info("Exit Refreshing Token Thread")
+                break
+
+            
+        self.logger.info("Refresh token thread stopped")
 
     def on_subscribe(self,client, obj, mid, granted_qos):
         
@@ -172,7 +184,8 @@ class C8yMQTT(object):
             self.logger.error("Disconnected! Try to reconnect: " +str(rc))
             self.client.reconnect()
         if self.cert_auth:
-            self.eventScheduler.cancel(self.refresher)
+            self.logger.error("Stopping refresh token thread")
+            self.stop_event.set
         
 
     def connect(self,on_message,topics):
@@ -231,9 +244,8 @@ class C8yMQTT(object):
         if not self.check_subs():
             self.logger.error("Could not subscribe to: " + topics)
             return 17
-        if self.cert_auth:
-            self.refresher = self.eventScheduler.enter(3,1,self.refresh_token)
-            self.eventScheduler.run()
+        
+
         return self.connected
 
     def initDevice(self,deviceName,deviceType,serialNumber,hardwareModel,reversion,operationString,requiredInterval):

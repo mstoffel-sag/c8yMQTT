@@ -13,11 +13,15 @@ c8y_tenant = os.environ.get('C8Y_TENANT')
 
 def delete_device (externalId):
     r = requests.get(c8y_url + '/identity/externalIds/c8y_Serial/' + externalId,auth=HTTPBasicAuth(c8y_user, c8y_pwd))
-    internal_id = r.json() ['managedObject']['id']
-    r = requests.delete(c8y_url + '/user/' + c8y_tenant+ '/users/device_' + externalId,auth=HTTPBasicAuth(c8y_user, c8y_pwd))
-    print("Delete User response: " + str(r.status_code))
-    r = requests.delete(c8y_url + '/inventory/managedObjects/'+ internal_id,auth=HTTPBasicAuth(c8y_user, c8y_pwd))
-    print("Delete Device: " + str(r.status_code))
+    try:
+        internal_id = r.json() ['managedObject']['id']
+        r = requests.delete(c8y_url + '/user/' + c8y_tenant+ '/users/device_' + externalId,auth=HTTPBasicAuth(c8y_user, c8y_pwd))
+        print("Delete User response: " + str(r.status_code))
+        r = requests.delete(c8y_url + '/inventory/managedObjects/'+ internal_id,auth=HTTPBasicAuth(c8y_user, c8y_pwd))
+        print("Delete Device: " + str(r.status_code))
+    except:
+        print ('Error fetching id')
+
 
 def accept_registration(externalId):
     for i in range(10):

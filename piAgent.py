@@ -168,11 +168,18 @@ def on_message_default(client, obj, msg):
 
     if message.startswith('516'):
         fields = message.split(",")
-        name = fields[2]
-        version = fields[3]
-        url = fields[7]
-        c8y.logger.info('Software Update:' + name + ' Version: ' + version)
-        Thread(target=softwareUpdate,args=(name,version,url,)).start()
+        if len(fields) == 5:
+            name = fields[2]
+            version = fields[3]
+            url = fields[4]
+            c8y.logger.info('Software Update:' + name + ' Version: ' + version)
+            Thread(target=softwareUpdate,args=(name,version,url,)).start()
+        if len(fields) < 5:
+            setCommandExecuting('c8y_SoftwareList')
+            setCommandFailed('c8y_SoftwareList','The agent cannot delete itself.')
+        if len(fields) > 5:
+            setCommandExecuting('c8y_SoftwareList')
+            setCommandFailed('c8y_SoftwareList','Only one version of piAgent is supported at a time.')
 
 def remoteConnect( tcp_host,tcp_port,connection_key,base_url):
     try:
@@ -200,7 +207,7 @@ def getRelease():
         with open('release') as f: 
             release = f.read()
             c8y.logger.info('Release: ' + str(release))
-            return release
+            return str(release)
     except Exception as e:
         c8y.logger.error('Error getting release file: ' + str(e))
         return 'error getting release file'
@@ -209,7 +216,7 @@ def getRelease():
 
 def softwareUpdate(name,version,url):
     try:
-        if name.startswith(piAgent):
+        if name.startswith('piAgent'):
             # Download new firmware
             if c8y.cert_auth:
                 header = {'Authorization': 'Bearer ' + c8y.token}
@@ -241,19 +248,22 @@ def softwareUpdate(name,version,url):
                         backup.write(file)
 
             # install new release
-            with ZipFile(newSoftwareFile, 'r') as newrelease:
-                newrelease.extractall('.')
+            #with ZipFile(newSoftwareFile, 'r') as newrelease:
+            #    newrelease.extractall('.')
             
             # Write new version to release file
-            with open('release','wt') as releasefile:
-                releasefile.write(version)
+            #with open('release','wt') as releasefile:
+            #    releasefile.write(version)
+            #c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
+            c8y.publish("s/us", "116,piAgent,"+ version+',')
             setCommandSuccessfull('c8y_SoftwareList')
-            serviceRestart('New Software')
-         else:
-            c8y.logger.info('SoftwareUpdate ignoring unsuported Software ' + str(e) )
+            serviceRestart('New Software Installed.')
+        else:
+            c8y.logger.info('SoftwareUpdate ignoring unsupported Software ' + str(e) )
+            setCommandFailed('c8y_SoftwareList','Only piAgent is supported as a software update. Feel free to implement other funtions.')
     except Exception as e:
         c8y.logger.info('SoftwareUpdateError: ' + str(e) )
-        setCommandFailed('c8y_SoftwareList')
+        setCommandFailed('c8y_SoftwareList', str(e))
 
 def on_message_startup(client, obj, msg):
     # Can be used to process messages while startup
@@ -359,10 +369,10 @@ def runAgent():
     ### Create SmartRest Templat must be deleted in UI if new version form here should be deployd
     c8y.createSmartRestTemplates()
     c8y.publish("s/us", "114,"+ config.get('device','operations'))
-    c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
+    c8y.publish("s/us", "116,piAgent,"+ getRelease()+",")
 
     sendConfiguration()
-    time.sleep(1)
+    time.sleep(2)
     c8y.disconnect()
     time.sleep(1)
 

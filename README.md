@@ -92,7 +92,7 @@ If that is the case either you have to delete the device and re-register or crea
 ### Certificate Authentication
 
 When in pi.properties the cert_auth flag is enabled and the corresponding root cert is active in the tenant and  auto registration is enabled for the root cert ->  The device is automatically created in the platform. You have to make sure that the externalId of the device (e.g. /cat/proc/cpuinfo) matches the common name of the client_cert.
-If cert_auth is enabled the agent also pulls the bearere token from the platfrom to use it in rest requests. This is implementedd in the software download feature.
+If cert_auth is enabled the agent also pulls the bearere token from the platfrom to use it in rest requests. This is implementedd in the software download feature. You cannot mix the two authentication methods. If you wold like to switch you have to delete the device credentials in the platform first.
 
 __c8y.properties__  
 After successful registration c8yMQTT will create and store the device credentials file c8y.properties in the same directory as the class. It can be created to provide manual credentials. Remove this file in order to initiate a new auto registration process.
@@ -115,5 +115,5 @@ The Agent supports the following functions:
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
 * Joystick -> Events are created on pressing. __If the joystick is pressed three times__ the PI will start a new registration process. This comes in handy if you have to move it to another tenant (works only if you dont use cert_auth).
 * Remote Access (thx Stefan W.)-> If the remote access microservice is subscribed to the cumulocity tenant and the user has remote access rights remote access can be configured within device management of the agents device
-* Experimental Software Update. You can create a zip file of the repo content and deploy that to the cumulocity software repository. It is recommended to leave the pi.properties out of the deployment since otherwise the local config would be overwritten.You should now be able to execute a software update in device management. Only Update is supported and the software name must start with piAgent. The agent will create a backup of the old installation in a backup folder. The Agent will also create a folder software_download where the downloaded versions are stored.
+* Experimental Software Update. You can create a zip file of the repo content and deploy that to the cumulocity software repository. It is recommended to leave the pi.properties out of the deployment since otherwise the local config would be overwritten.You should now be able to execute a software update in device management. Only Update is supported and the software name must start with piAgent. The agent will create a backup of the old installation in a backup folder. The Agent will also create a folder software_download where the downloaded versions are stored. Be sure to update the relese file in the new software zip, it will be reported as new software version to the platform.
 

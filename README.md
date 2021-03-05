@@ -115,5 +115,5 @@ The Agent supports the following functions:
 * Transmitted Measurements -> Temperature, Gyroscope, Acceleration, Pressure, Humidity
 * Joystick -> Events are created on pressing. __If the joystick is pressed three times__ the PI will start a new registration process. This comes in handy if you have to move it to another tenant (works only if you dont use cert_auth).
 * Remote Access (thx Stefan W.)-> If the remote access microservice is subscribed to the cumulocity tenant and the user has remote access rights remote access can be configured within device management of the agents device
-* !!!Experimental!!! Software Update. You can create a zip file of the repo content deploy that to the cumulocity software repository. You should now be able to execute a software update in device management.
+* Experimental Software Update. You can create a zip file of the repo content and deploy that to the cumulocity software repository. It is recommended to leave the pi.properties out of the deployment since otherwise the local config would be overwritten.You should now be able to execute a software update in device management. Only Update is supported and the software name must start with piAgent. The agent will create a backup of the old installation in a backup folder. The Agent will also create a folder software_download where the downloaded versions are stored.
 

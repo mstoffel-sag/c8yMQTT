@@ -184,7 +184,26 @@ def on_message_default(client, obj, msg):
 def remoteConnect( tcp_host,tcp_port,connection_key,base_url):
     try:
         c8y.logger.info('Starting Remote to: ' + str(tcp_host) + ':' + str(tcp_port) + ' Key: ' + str(connection_key) + ' url: ' + str(base_url))
-        devProx = DeviceProxy( tcp_host,tcp_port,connection_key,base_url, c8y.tenant,c8y.user,c8y.password,None)
+        if c8y.cert_auth:
+            devProx = DeviceProxy(  tcp_host,
+                                    tcp_port,
+                                    connection_key,
+                                    base_url,
+                                    None,
+                                    None,
+                                    None,
+                                    c8y.token
+                                    )
+        else:
+            devProx = DeviceProxy(  tcp_host,
+                                    tcp_port,
+                                    connection_key,
+                                    base_url,
+                                    c8y.tenant,
+                                    c8y.user,
+                                    c8y.password,
+                                    None
+                                    )
         devProx.connect()
         c8y.logger.info('Remote Connection successfull finished')
         return 'success'

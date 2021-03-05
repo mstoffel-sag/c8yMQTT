@@ -129,7 +129,7 @@ def on_message_default(client, obj, msg):
     if message.startswith('71'):
         fields = message.split(",")
         c8y.token = fields[1]
-        c8y.logger.debug('New Token:' + str(c8y.token))
+        c8y.logger.info('New JWT Token received')
     if message.startswith('510'):
         Thread(target=restart).start()
 

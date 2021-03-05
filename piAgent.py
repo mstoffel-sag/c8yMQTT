@@ -248,14 +248,13 @@ def softwareUpdate(name,version,url):
                         backup.write(file)
 
             # install new release
-            #with ZipFile(newSoftwareFile, 'r') as newrelease:
-            #    newrelease.extractall('.')
+            with ZipFile(newSoftwareFile, 'r') as newrelease:
+                newrelease.extractall('.')
             
             # Write new version to release file
-            #with open('release','wt') as releasefile:
-            #    releasefile.write(version)
-            #c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
-            c8y.publish("s/us", "116,piAgent,"+ version+',')
+            with open('release','wt') as releasefile:
+                releasefile.write(version)
+            c8y.publish("s/us", "116,piAgent,"+ getRelease()+',')
             setCommandSuccessfull('c8y_SoftwareList')
             serviceRestart('New Software Installed.')
         else:

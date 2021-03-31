@@ -84,7 +84,7 @@ the pi.properties file holds device specific parameters.
 
 ### Device Registration
 
-To autoregister your pi go to Cumulocity -> Device Management. Create a new Device Registration by entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. After registration the c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set (default).
+To autoregister your pi go to Cumulocity -> Device Management. Create a new Device Registration by entering the serial (could be retrieved by cat /proc/cpuinfo) of your PI. After registration the c8y.properties file will be created automatically. For this the bootstrap_pwd in pi.properties must be set (default). If you run the Agent on plain linux you can set the serial using the optional parameter "serial" in pi.properties to configure it manually 
 
 !!!PLEASE MAKE SURE THAT THE DEVICE IS NOT ALREADY REGISTERED WITH IT'S SERIAL NUMBER!!!
 If that is the case either you have to delete the device and re-register or create the c8y.properties by hand and provide correct credentials and client id.
